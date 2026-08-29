@@ -20,18 +20,41 @@ opencode A (AGENT_ID=tester)            opencode B (AGENT_ID=sut_expert)
 - [opencode](https://opencode.ai) (TUI)
 - [bun](https://bun.sh) ≥ 1.4
 
-## Установка
+## Установка (глобально)
 
 ```bash
-cd bus && bun install
-cd ../.opencode && bun install
+# 1. скопировать bus в глобальный конфиг opencode
+mkdir -p ~/.config/opencode
+cp -R bus ~/.config/opencode/bus
+cd ~/.config/opencode/bus && bun install
+
+# 2. скопировать плагин в глобальную папку плагинов
+mkdir -p ~/.config/opencode/plugins
+cp plugin/mismcp.ts ~/.config/opencode/plugins/
 ```
 
-Плагин лежит в `.opencode/plugins/mismcp.ts` и автозагружается при старте. MCP-сервер указан в `opencode.json` (локальный, запускается через `bun run ./bus/src/mcp-server.ts`).
+Плагин лежит в `~/.config/opencode/plugins/mismcp.ts` и автозагружается при старте любого инстанса. MCP-сервер должен быть указан в глобальном конфиге `~/.config/opencode/opencode.json` (или `opencode.jsonc`, если он есть):
+
+```jsonc
+{
+  "mcp": {
+    "mismcp": {
+      "type": "local",
+      "command": ["bun", "run", "/Users/<you>/.config/opencode/bus/src/mcp-server.ts"],
+      "environment": {
+        "AGENT_ID": "{env:AGENT_ID}",
+        "BUS_PATH": "{env:BUS_PATH}"
+      }
+    }
+  }
+}
+```
+
+Затем **перезапусти opencode**, чтобы конфиг применился.
 
 ## Настройка
 
-Конфигурация уже в `opencode.json`: сервер `mismcp` берёт `AGENT_ID` и `BUS_PATH` из окружения (`{env:...}`). Ничего менять не нужно, если дефолты подходят:
+Сервер `mismcp` берёт `AGENT_ID` и `BUS_PATH` из окружения (`{env:...}`). Ничего менять не нужно, если дефолты подходят:
 
 | Переменная | Дефолт | Назначение |
 |---|---|---|
@@ -127,18 +150,41 @@ The bus is a shared SQLite file `~/.mismcp/bus.db` (WAL, busy_timeout), so even 
 - [opencode](https://opencode.ai) (TUI)
 - [bun](https://bun.sh) ≥ 1.4
 
-## Installation
+## Installation (global)
 
 ```bash
-cd bus && bun install
-cd ../.opencode && bun install
+# 1. copy bus into the global opencode config
+mkdir -p ~/.config/opencode
+cp -R bus ~/.config/opencode/bus
+cd ~/.config/opencode/bus && bun install
+
+# 2. copy the plugin into the global plugin folder
+mkdir -p ~/.config/opencode/plugins
+cp plugin/mismcp.ts ~/.config/opencode/plugins/
 ```
 
-The plugin lives in `.opencode/plugins/mismcp.ts` and is auto-loaded on startup. The MCP server is wired up in `opencode.json` (local, started via `bun run ./bus/src/mcp-server.ts`).
+The plugin lives in `~/.config/opencode/plugins/mismcp.ts` and is auto-loaded at startup by any instance. The MCP server must be wired up in the global config `~/.config/opencode/opencode.json` (or `opencode.jsonc` if it exists):
+
+```jsonc
+{
+  "mcp": {
+    "mismcp": {
+      "type": "local",
+      "command": ["bun", "run", "/Users/<you>/.config/opencode/bus/src/mcp-server.ts"],
+      "environment": {
+        "AGENT_ID": "{env:AGENT_ID}",
+        "BUS_PATH": "{env:BUS_PATH}"
+      }
+    }
+  }
+}
+```
+
+Then **restart opencode** for the config to take effect.
 
 ## Configuration
 
-The config is already in `opencode.json`: the `mismcp` server takes `AGENT_ID` and `BUS_PATH` from the environment (`{env:...}`). Nothing to change if the defaults fit:
+The `mismcp` server takes `AGENT_ID` and `BUS_PATH` from the environment (`{env:...}`). Nothing to change if the defaults fit:
 
 | Variable | Default | Purpose |
 |---|---|---|

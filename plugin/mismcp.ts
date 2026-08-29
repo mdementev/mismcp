@@ -2,8 +2,8 @@ import type { Plugin } from "@opencode-ai/plugin"
 import type { Session } from "@opencode-ai/sdk"
 import { homedir } from "node:os"
 import { join } from "node:path"
-import { openStore } from "../../bus/src/store"
-import type { Message } from "../../bus/src/store"
+import { openStore } from "../bus/src/store"
+import type { Message } from "../bus/src/store"
 
 type DataResult<T> = { data: T | undefined }
 

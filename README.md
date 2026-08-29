@@ -1,5 +1,14 @@
 # mismcp
 
+Inter-agent messaging for opencode over a shared bus. An agent can ask another agent a question and get an answer — even when the other agent runs in a separate opencode instance.
+
+- **MCP server `mismcp`** — a single tool `bus_send`: an agent sends a message to the shared queue.
+- **Plugin** — delivery: polls the queue, pushes incoming messages into the agent's session, and replies through `bus_send`.
+
+---
+
+# mismcp (RU)
+
 Переписка между агентами opencode через общую шину. Агент может задать вопрос другому агенту и получить ответ — даже если другой агент работает в отдельном процессе opencode.
 
 - **MCP-сервер `mismcp`** — единственный тул `bus_send`: агент отправляет сообщение в общую очередь.

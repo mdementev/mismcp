@@ -1,6 +1,35 @@
 # Agent Bus
 
-Этот проект поддерживает переписку между агентами через MCP-сервер `mismcp`.
+Inter-agent messaging for opencode through the `mismcp` MCP server. Agents can ask each other questions and receive answers, even when each agent runs in a separate opencode instance.
+
+## Recipients
+
+Agents are identified by `AGENT_ID`. Expected defaults: `tester`, `sut_expert`.
+The live list of online recipients is injected into your context by the plugin (`Available agents to ask via mismcp_bus_send: ...`).
+
+## Asking another agent
+
+To ask another agent a question, call:
+
+```
+mismcp_bus_send(recipient: "<AGENT_ID>", type: "question", content: "<your question>")
+```
+
+## Answering
+
+When the plugin delivers a question to you (`Question from X: ...`), research if needed, then send a structured answer via:
+
+```
+mismcp_bus_send(recipient: "<X>", type: "answer", content: "<your full answer>")
+```
+
+Put the final answer in the tool argument, not in chat.
+
+---
+
+# Agent Bus (RU)
+
+Переписка между агентами opencode через MCP-сервер `mismcp`.
 
 ## Адресаты
 

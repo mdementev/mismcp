@@ -42,7 +42,7 @@ cd ../.opencode && bun install
 
 ## Запуск двух инстансов
 
-В двух терминалах, из корня проекта:
+В двух терминалах:
 
 ```bash
 # терминал 1
@@ -52,7 +52,7 @@ AGENT_ID=tester opencode
 AGENT_ID=sut_expert opencode
 ```
 
-Оба инстанса работают на одном проекте, но с разной идентичностью. Шина общая.
+Инстансы могут работать из любых папок и проектов — шина по умолчанию общая (`~/.mismcp/bus.db`), а идентичность задаётся через `AGENT_ID`.
 
 ## Использование
 
@@ -92,7 +92,7 @@ AGENT_ID=sut_expert opencode
 - `AGENT_ID` пуст → пуш отключён.
 - Каждые ~3с: heartbeat → ростер → проверка инбокса.
 - Ростер (`Available agents to ask via mismcp_bus_send: ...`) инжектится в сессии при изменении и при создании новой сессии.
-- Входящее сообщение пушится в последнюю активную (не занятую) сессию проекта:
+- Входящее сообщение пушится в последнюю активную (не занятую) сессию этого инстанса:
   - `question`: «Вопрос от X: ... Исследуй и отправь структурированный ответ X через mismcp_bus_send(..., type: "answer", ...). Финальный ответ — в аргументе тула.»
   - `answer`: «Ответ от X: ...» — без инструкции отвечать.
 - После успешного пуша сообщение помечается `acked`. Если сессия занята — сообщение остаётся в очереди и доставляется следующим poll'ом.
@@ -149,7 +149,7 @@ If `AGENT_ID` is unset or empty, the plugin logs a warning and stays disabled.
 
 ## Running two instances
 
-In two terminals, from the project root:
+In two terminals:
 
 ```bash
 # terminal 1
@@ -159,7 +159,7 @@ AGENT_ID=tester opencode
 AGENT_ID=sut_expert opencode
 ```
 
-Both instances work on the same project but with different identities. The bus is shared.
+Instances can run from any folder or project — the bus is shared by default (`~/.mismcp/bus.db`), and identity comes from `AGENT_ID`.
 
 ## Usage
 
@@ -199,7 +199,7 @@ Entries with `last_seen` older than 30s are considered offline — a gone instan
 - Empty `AGENT_ID` → push disabled.
 - Every ~3s: heartbeat → roster → inbox check.
 - The roster (`Available agents to ask via mismcp_bus_send: ...`) is injected into sessions when it changes and when a new session is created.
-- An incoming message is pushed into the latest active (not busy) session of the project:
+- An incoming message is pushed into the latest active (not busy) session of this instance:
   - `question`: "Question from X: ... Research if needed, then send a structured answer to X via mismcp_bus_send(..., type: "answer", ...). Put the final answer in the tool argument."
   - `answer`: "Answer from X: ..." — with no instruction to reply.
 - After a successful push the message is marked `acked`. If the session is busy — the message stays in the queue and is delivered on the next poll.

@@ -13,7 +13,7 @@ const store = openStore(busPath)
 const server = new McpServer({ name: "mismcp", version: "0.1.0" })
 
 server.registerTool(
-  "bus_send",
+  "mismcp_bus_send",
   {
     title: "Send a message to another agent",
     description:

@@ -27,18 +27,18 @@ async function withServer(fn: (client: Client) => Promise<void>) {
 }
 
 describe("mcp-server", () => {
-  test("lists bus_send tool", async () => {
+  test("lists mismcp_bus_send tool", async () => {
     await withServer(async (client) => {
       const { tools } = await client.listTools()
       const names = tools.map((t) => t.name)
-      expect(names).toContain("bus_send")
+      expect(names).toContain("mismcp_bus_send")
     })
   })
 
-  test("bus_send stores a message", async () => {
+  test("mismcp_bus_send stores a message", async () => {
     await withServer(async (client) => {
       const res = await client.callTool({
-        name: "bus_send",
+        name: "mismcp_bus_send",
         arguments: {
           recipient: "sut_expert",
           type: "question",
@@ -54,10 +54,10 @@ describe("mcp-server", () => {
     })
   })
 
-  test("bus_send rejects invalid type", async () => {
+  test("mismcp_bus_send rejects invalid type", async () => {
     await withServer(async (client) => {
       const res = await client.callTool({
-        name: "bus_send",
+        name: "mismcp_bus_send",
         arguments: { recipient: "sut_expert", type: "bogus", content: "x" },
       })
       expect(res.isError).toBe(true)

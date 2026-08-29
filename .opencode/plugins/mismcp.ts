@@ -1,5 +1,7 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import type { Session } from "@opencode-ai/sdk"
+import { homedir } from "node:os"
+import { join } from "node:path"
 import { openStore } from "../../bus/src/store"
 import type { Message } from "../../bus/src/store"
 
@@ -23,7 +25,7 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
     return {}
   }
 
-  const busPath = (process.env.BUS_PATH ?? "").trim() || `${directory}/.mismcp/bus.db`
+  const busPath = (process.env.BUS_PATH ?? "").trim() || join(homedir(), ".mismcp", "bus.db")
   const store = openStore(busPath)
 
   await client.app.log({

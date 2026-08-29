@@ -1,4 +1,3 @@
-.mismcp/
 node_modules/
 bun.lock
 bus/src/.tmp-*

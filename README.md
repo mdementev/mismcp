@@ -13,7 +13,7 @@ opencode A (AGENT_ID=tester)            opencode B (AGENT_ID=sut_expert)
  └─ плагин: poll → push в сессию        ▲                └─ плагин: poll → push в сессию
 ```
 
-Шина — общий SQLite-файл `.mismcp/bus.db` в корне проекта (WAL, busy_timeout), поэтому даже отдельные процессы opencode читают/пишут одну очередь.
+Шина — общий SQLite-файл `~/.mismcp/bus.db` (WAL, busy_timeout), поэтому даже отдельные процессы opencode читают/пишут одну очередь.
 
 ## Требования
 
@@ -36,7 +36,7 @@ cd ../.opencode && bun install
 | Переменная | Дефолт | Назначение |
 |---|---|---|
 | `AGENT_ID` | — | идентичность агента, обязательна |
-| `BUS_PATH` | `<проект>/.mismcp/bus.db` | путь к файлу очереди |
+| `BUS_PATH` | `~/.mismcp/bus.db` | путь к файлу очереди |
 
 Если `AGENT_ID` не задан или пуст, плагин пишет предупреждение в лог и не включается.
 
@@ -101,7 +101,7 @@ AGENT_ID=sut_expert opencode
 
 - **Тул не виден агенту**: проверь, что MCP-сервер поднялся — `opencode mcp list` (имя `mismcp`), и что `AGENT_ID` задан.
 - **Логи плагина**: запусти opencode с `--print-logs --log-level DEBUG` (сервис `mismcp`).
-- **Разные базы**: убедись, что оба инстанса видят один `BUS_PATH` (по умолчанию `.mismcp/bus.db` в корне проекта). MCP-сервер резолвит дефолт от `process.cwd()` — запускай opencode из корня проекта.
+- **Разные базы**: убедись, что оба инстанса видят один `BUS_PATH` (по умолчанию `~/.mismcp/bus.db`).
 
 ---
 
@@ -120,7 +120,7 @@ opencode A (AGENT_ID=tester)            opencode B (AGENT_ID=sut_expert)
  └─ plugin: poll → push to session       ▲                └─ plugin: poll → push to session
 ```
 
-The bus is a shared SQLite file `.mismcp/bus.db` at the project root (WAL, busy_timeout), so even separate opencode processes read and write a single queue.
+The bus is a shared SQLite file `~/.mismcp/bus.db` (WAL, busy_timeout), so even separate opencode processes read and write a single queue.
 
 ## Requirements
 
@@ -143,7 +143,7 @@ The config is already in `opencode.json`: the `mismcp` server takes `AGENT_ID` a
 | Variable | Default | Purpose |
 |---|---|---|
 | `AGENT_ID` | — | agent identity, required |
-| `BUS_PATH` | `<project>/.mismcp/bus.db` | path to the queue file |
+| `BUS_PATH` | `~/.mismcp/bus.db` | path to the queue file |
 
 If `AGENT_ID` is unset or empty, the plugin logs a warning and stays disabled.
 
@@ -208,4 +208,4 @@ Entries with `last_seen` older than 30s are considered offline — a gone instan
 
 - **The tool is not visible to the agent**: make sure the MCP server is up — `opencode mcp list` (name `mismcp`) — and that `AGENT_ID` is set.
 - **Plugin logs**: run opencode with `--print-logs --log-level DEBUG` (service `mismcp`).
-- **Different databases**: make sure both instances see the same `BUS_PATH` (default `.mismcp/bus.db` at the project root). The MCP server resolves the default from `process.cwd()` — launch opencode from the project root.
+- **Different databases**: make sure both instances see the same `BUS_PATH` (default `~/.mismcp/bus.db`).

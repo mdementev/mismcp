@@ -2,10 +2,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod"
 import { join } from "node:path"
+import { homedir } from "node:os"
 import { openStore } from "./store"
 
 const agentId = (process.env.AGENT_ID ?? "").trim()
-const busPath = (process.env.BUS_PATH ?? "").trim() || join(process.cwd(), ".mismcp", "bus.db")
+const busPath =
+  (process.env.BUS_PATH ?? "").trim() || join(homedir(), ".mismcp", "bus.db")
 
 const store = openStore(busPath)
 const server = new McpServer({ name: "mismcp", version: "0.1.0" })

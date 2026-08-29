@@ -14,21 +14,21 @@ const unwrap = <T>(res: DataResult<T> | T): T => {
   return res as T
 }
 
-export const AgentBus: Plugin = async ({ client, directory }) => {
+export const Mismcp: Plugin = async ({ client, directory }) => {
   const agentId = (process.env.AGENT_ID ?? "").trim()
   if (!agentId) {
     await client.app.log({
-      body: { service: "agentbus", level: "warn", message: "AGENT_ID is not set — agent bus disabled" },
+      body: { service: "mismcp", level: "warn", message: "AGENT_ID is not set — agent bus disabled" },
     })
     return {}
   }
 
-  const busPath = (process.env.BUS_PATH ?? "").trim() || `${directory}/.agentbus/bus.db`
+  const busPath = (process.env.BUS_PATH ?? "").trim() || `${directory}/.mismcp/bus.db`
   const store = openStore(busPath)
 
   await client.app.log({
     body: {
-      service: "agentbus",
+      service: "mismcp",
       level: "info",
       message: `agent bus online as "${agentId}"`,
       extra: { busPath },
@@ -47,7 +47,7 @@ export const AgentBus: Plugin = async ({ client, directory }) => {
     if (roster === rosterCache) return
     rosterCache = roster
     const text = roster
-      ? `Available agents to ask via agentbus_bus_send: ${roster}`
+      ? `Available agents to ask via mismcp_bus_send: ${roster}`
       : "No other agents are online right now."
     const res = await client.session.list()
     const sessions = unwrap(res)
@@ -81,7 +81,7 @@ export const AgentBus: Plugin = async ({ client, directory }) => {
       msg.type === "question"
         ? `Question from ${msg.from}:\n${msg.content}\n\n` +
           `Research if needed, then compose a structured answer and send it to ${msg.from} via ` +
-          `agentbus_bus_send(recipient: "${msg.from}", type: "answer", content: <your full answer>). ` +
+          `mismcp_bus_send(recipient: "${msg.from}", type: "answer", content: <your full answer>). ` +
           `Put the final answer in the tool argument.`
         : `Answer from ${msg.from}:\n${msg.content}`
 
@@ -99,7 +99,7 @@ export const AgentBus: Plugin = async ({ client, directory }) => {
       await injectRoster()
     } catch (err) {
       await client.app.log({
-        body: { service: "agentbus", level: "error", message: `roster: ${String(err)}` },
+        body: { service: "mismcp", level: "error", message: `roster: ${String(err)}` },
       })
     }
 
@@ -108,7 +108,7 @@ export const AgentBus: Plugin = async ({ client, directory }) => {
         if (await pushMessage(msg)) continue
       } catch (err) {
         await client.app.log({
-          body: { service: "agentbus", level: "error", message: `push: ${String(err)}` },
+          body: { service: "mismcp", level: "error", message: `push: ${String(err)}` },
         })
       }
       break

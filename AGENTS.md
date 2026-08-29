@@ -1,18 +1,18 @@
 # Agent Bus
 
-Этот проект поддерживает переписку между агентами через MCP-сервер `agentbus`.
+Этот проект поддерживает переписку между агентами через MCP-сервер `mismcp`.
 
 ## Адресаты
 
 Агенты идентифицируются по `AGENT_ID`. Ожидаемые по умолчанию: `tester`, `sut_expert`.
-Актуальный список живых адресатов инжектится в контекст плагином (`Available agents to ask via agentbus_bus_send: ...`).
+Актуальный список живых адресатов инжектится в контекст плагином (`Available agents to ask via mismcp_bus_send: ...`).
 
 ## Как спросить другого агента
 
 Чтобы задать вопрос другому агенту, вызови тул:
 
 ```
-agentbus_bus_send(recipient: "<AGENT_ID>", type: "question", content: "<ваш вопрос>")
+mismcp_bus_send(recipient: "<AGENT_ID>", type: "question", content: "<ваш вопрос>")
 ```
 
 ## Как отвечать
@@ -20,7 +20,7 @@ agentbus_bus_send(recipient: "<AGENT_ID>", type: "question", content: "<ваш �
 Когда плагин доставляет тебе вопрос (`Question from X: ...`), при необходимости исследуй, затем отправь структурированный ответ через:
 
 ```
-agentbus_bus_send(recipient: "<X>", type: "answer", content: "<полный ответ>")
+mismcp_bus_send(recipient: "<X>", type: "answer", content: "<полный ответ>")
 ```
 
 Финальный ответ клади в аргумент тула, а не в чат.

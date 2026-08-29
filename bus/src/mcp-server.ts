@@ -5,10 +5,10 @@ import { join } from "node:path"
 import { openStore } from "./store"
 
 const agentId = (process.env.AGENT_ID ?? "").trim()
-const busPath = (process.env.BUS_PATH ?? "").trim() || join(process.cwd(), ".agentbus", "bus.db")
+const busPath = (process.env.BUS_PATH ?? "").trim() || join(process.cwd(), ".mismcp", "bus.db")
 
 const store = openStore(busPath)
-const server = new McpServer({ name: "agentbus", version: "0.1.0" })
+const server = new McpServer({ name: "mismcp", version: "0.1.0" })
 
 server.registerTool(
   "bus_send",

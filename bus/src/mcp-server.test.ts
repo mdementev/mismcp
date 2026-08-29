@@ -1,16 +1,17 @@
-import { describe, expect, test } from "bun:test"
+import { describe, it } from "node:test"
+import assert from "node:assert/strict"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { rmSync } from "node:fs"
 import { join } from "node:path"
 
-const tmpDir = `${import.meta.dir}/.tmp-mcp`
+const tmpDir = `${import.meta.dirname}/.tmp-mcp`
 rmSync(tmpDir, { recursive: true, force: true })
 
 async function withServer(fn: (client: Client) => Promise<void>) {
   const transport = new StdioClientTransport({
     command: process.execPath,
-    args: ["run", join(import.meta.dir, "mcp-server.ts")],
+    args: ["--experimental-sqlite", join(import.meta.dirname, "mcp-server.js")],
     env: {
       ...process.env,
       AGENT_ID: "tester",
@@ -27,15 +28,15 @@ async function withServer(fn: (client: Client) => Promise<void>) {
 }
 
 describe("mcp-server", () => {
-  test("lists mismcp_bus_send tool", async () => {
+  it("lists mismcp_bus_send tool", async () => {
     await withServer(async (client) => {
       const { tools } = await client.listTools()
       const names = tools.map((t) => t.name)
-      expect(names).toContain("mismcp_bus_send")
+      assert.ok(names.includes("mismcp_bus_send"))
     })
   })
 
-  test("mismcp_bus_send stores a message", async () => {
+  it("mismcp_bus_send stores a message", async () => {
     await withServer(async (client) => {
       const res = await client.callTool({
         name: "mismcp_bus_send",
@@ -48,29 +49,29 @@ describe("mcp-server", () => {
       const content = res.content as Array<{ type: string; text?: string }>
       const text = content.find((c) => c.type === "text")?.text ?? ""
       const { id, from, created_at } = JSON.parse(text)
-      expect(from).toBe("tester")
-      expect(id).toBeTruthy()
-      expect(created_at).toBeGreaterThan(0)
+      assert.equal(from, "tester")
+      assert.ok(id)
+      assert.ok(created_at > 0)
     })
   })
 
-  test("mismcp_bus_send rejects sending to self", async () => {
+  it("mismcp_bus_send rejects sending to self", async () => {
     await withServer(async (client) => {
       const res = await client.callTool({
         name: "mismcp_bus_send",
         arguments: { recipient: "tester", type: "question", content: "hello me?" },
       })
-      expect(res.isError).toBe(true)
+      assert.equal(res.isError, true)
     })
   })
 
-  test("mismcp_bus_send rejects invalid type", async () => {
+  it("mismcp_bus_send rejects invalid type", async () => {
     await withServer(async (client) => {
       const res = await client.callTool({
         name: "mismcp_bus_send",
         arguments: { recipient: "sut_expert", type: "bogus", content: "x" },
       })
-      expect(res.isError).toBe(true)
+      assert.equal(res.isError, true)
     })
   })
 })

@@ -1,81 +1,84 @@
-import { describe, expect, test } from "bun:test"
+import { describe, it } from "node:test"
+import assert from "node:assert/strict"
 import { rmSync } from "node:fs"
-import { openStore } from "./store"
+import { openStore } from "./store.js"
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 describe("store", () => {
   const store = () => openStore(":memory:")
 
-  test("send → inbox roundtrip for recipient", () => {
+  it("send → inbox roundtrip for recipient", () => {
     const s = store()
     s.send({ from: "tester", recipient: "sut_expert", type: "question", content: "how?" })
 
     const inbox = s.inbox("sut_expert")
-    expect(inbox).toHaveLength(1)
-    expect(inbox[0].from).toBe("tester")
-    expect(inbox[0].recipient).toBe("sut_expert")
-    expect(inbox[0].type).toBe("question")
-    expect(inbox[0].content).toBe("how?")
-    expect(inbox[0].acked).toBe(0)
+    assert.equal(inbox.length, 1)
+    assert.equal(inbox[0].from, "tester")
+    assert.equal(inbox[0].recipient, "sut_expert")
+    assert.equal(inbox[0].type, "question")
+    assert.equal(inbox[0].content, "how?")
+    assert.equal(inbox[0].acked, 0)
 
-    expect(s.inbox("tester")).toHaveLength(0)
+    assert.equal(s.inbox("tester").length, 0)
   })
 
-  test("ack removes message from inbox", () => {
+  it("ack removes message from inbox", () => {
     const s = store()
     const msg = s.send({ from: "tester", recipient: "sut_expert", type: "question", content: "how?" })
     s.ack(msg.id)
 
-    expect(s.inbox("sut_expert")).toHaveLength(0)
+    assert.equal(s.inbox("sut_expert").length, 0)
   })
 
-  test("inbox preserves send order", () => {
+  it("inbox preserves send order", () => {
     const s = store()
     s.send({ from: "tester", recipient: "sut_expert", type: "question", content: "first" })
     s.send({ from: "tester", recipient: "sut_expert", type: "question", content: "second" })
 
     const inbox = s.inbox("sut_expert")
-    expect(inbox.map((m) => m.content)).toEqual(["first", "second"])
+    assert.deepEqual(inbox.map((m) => m.content), ["first", "second"])
   })
 
-  test("register + agents with ttl", async () => {
+  it("register + agents with ttl", async () => {
     const s = store()
     s.register("tester")
     s.register("sut_expert")
 
-    expect(s.agents().map((a) => a.agent_id)).toEqual(["sut_expert", "tester"])
+    assert.deepEqual(s.agents().map((a) => a.agent_id), ["sut_expert", "tester"])
     // stale entry older than ttl is excluded
-    await Bun.sleep(5)
-    expect(s.agents(0)).toEqual([])
+    await sleep(5)
+    assert.deepEqual(s.agents(0), [])
   })
 
-  test("register refreshes last_seen (heartbeat)", async () => {
+  it("register refreshes last_seen (heartbeat)", async () => {
     const s = store()
     s.register("tester")
-    await Bun.sleep(5)
-    expect(s.agents(0)).toHaveLength(0)
+    await sleep(5)
+    assert.equal(s.agents(0).length, 0)
 
     s.register("tester")
-    expect(s.agents(0)).toHaveLength(1)
+    assert.equal(s.agents(0).length, 1)
   })
 
-  test("concurrent writers do not lose messages", () => {
+  it("concurrent writers do not lose messages", () => {
     const s = store()
     const senders = Array.from({ length: 20 }, (_, i) => i)
     senders.forEach((i) => {
       s.send({ from: `a${i}`, recipient: "sut_expert", type: "answer", content: `c${i}` })
     })
 
-    expect(s.inbox("sut_expert")).toHaveLength(20)
+    assert.equal(s.inbox("sut_expert").length, 20)
   })
 
-  test("file-backed store persists", () => {
-    const path = `${import.meta.dir}/.tmp-test.db`
+  it("file-backed store persists", () => {
+    const path = `${import.meta.dirname}/.tmp-test.db`
     rmSync(path, { force: true })
     const a = openStore(path)
     a.send({ from: "tester", recipient: "sut_expert", type: "question", content: "persisted?" })
 
     const b = openStore(path)
-    expect(b.inbox("sut_expert")).toHaveLength(1)
+    assert.equal(b.inbox("sut_expert").length, 1)
     rmSync(path, { force: true })
   })
 })

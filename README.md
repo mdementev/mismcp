@@ -1,6 +1,6 @@
-# mismcp
+# mismcp — stateful multi-agent for opencode
 
-Переписка между агентами opencode через общую шину. Агент может задать вопрос другому агенту и получить ответ — даже если другой агент работает в отдельном процессе opencode.
+**Stateful мультиагентный агент-бас для opencode**: переписка между агентами через общую SQLite-шину. Агент может задать вопрос другому агенту и получить ответ — даже если другой агент работает в отдельном процессе opencode.
 
 - **MCP-сервер `mismcp`** — единственный тул `bus_send`: агент отправляет сообщение в общую очередь.
 - **Плагин** — доставка: опрашивает очередь, пушит входящие сообщения в сессию агента, отвечает на них через `bus_send`.
@@ -18,19 +18,37 @@ opencode A (AGENT_ID=tester)            opencode B (AGENT_ID=sut_expert)
 ## Требования
 
 - [opencode](https://opencode.ai) (TUI)
-- [bun](https://bun.sh) ≥ 1.4
+- [Node.js](https://nodejs.org) ≥ 22.5 (встроенный модуль `node:sqlite`)
 
 ## Установка (глобально)
+
+Скрипт установки копирует `bus` и плагин в глобальный конфиг opencode, ставит npm-зависимости, собирает MCP-сервер (`tsc`) и прописывает MCP-запись в `opencode.json` (не перезаписывая остальные настройки):
+
+```bash
+# macOS / Linux / WSL
+./install.sh
+
+# Windows (PowerShell)
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+Требуется [Node.js](https://nodejs.org) ≥ 22.5. Если в `~/.config/opencode/` уже есть `opencode.jsonc` — скрипт его не трогает, MCP-запись добавь вручную. Повторный запуск (после обновления репозитория) просто переустанавливает.
+
+Bun больше не нужен: opencode — самодостаточный бинарник со встроенным Bun-рантаймом (на нём исполняется плагин), а MCP-сервер запускается на Node с встроенным `node:sqlite`. На Windows, где bun заблокирован корпоративной политикой, достаточно установленного Node.
+
+### Ручная установка
 
 ```bash
 # 1. скопировать bus в глобальный конфиг opencode
 mkdir -p ~/.config/opencode
 cp -R bus ~/.config/opencode/bus
-cd ~/.config/opencode/bus && bun install
+cd ~/.config/opencode/bus && npm install && npm run build
 
 # 2. скопировать плагин в глобальную папку плагинов
 mkdir -p ~/.config/opencode/plugins
 cp plugin/mismcp.ts ~/.config/opencode/plugins/
+
+# 3. прописать MCP-сервер в ~/.config/opencode/opencode.json (см. ниже)
 ```
 
 Плагин лежит в `~/.config/opencode/plugins/mismcp.ts` и автозагружается при старте любого инстанса. MCP-сервер должен быть указан в глобальном конфиге `~/.config/opencode/opencode.json` (или `opencode.jsonc`, если он есть):
@@ -40,7 +58,7 @@ cp plugin/mismcp.ts ~/.config/opencode/plugins/
   "mcp": {
     "mismcp": {
       "type": "local",
-      "command": ["bun", "run", "/Users/<you>/.config/opencode/bus/src/mcp-server.ts"],
+      "command": ["node", "--experimental-sqlite", "/Users/<you>/.config/opencode/bus/dist/mcp-server.js"],
       "environment": {
         "AGENT_ID": "{env:AGENT_ID}",
         "BUS_PATH": "{env:BUS_PATH}"
@@ -49,6 +67,8 @@ cp plugin/mismcp.ts ~/.config/opencode/plugins/
   }
 }
 ```
+
+Флаг `--experimental-sqlite` нужен для Node 22.5–22.12 и безвреден на новых версиях.
 
 Затем **перезапусти opencode**, чтобы конфиг применился.
 
@@ -128,9 +148,9 @@ AGENT_ID=sut_expert opencode
 
 ---
 
-# mismcp
+# mismcp — stateful multi-agent for opencode
 
-Inter-agent messaging for opencode over a shared bus. An agent can ask another agent a question and get an answer — even when the other agent runs in a separate opencode instance.
+**Stateful multi-agent bus for opencode**: inter-agent messaging over a shared SQLite bus. An agent can ask another agent a question and get an answer — even when the other agent runs in a separate opencode instance.
 
 - **MCP server `mismcp`** — a single tool `bus_send`: an agent sends a message to the shared queue.
 - **Plugin** — delivery: polls the queue, pushes incoming messages into the agent's session, and replies through `bus_send`.
@@ -148,7 +168,7 @@ The bus is a shared SQLite file `~/.mismcp/bus.db` (WAL, busy_timeout), so even 
 ## Requirements
 
 - [opencode](https://opencode.ai) (TUI)
-- [bun](https://bun.sh) ≥ 1.4
+- [Node.js](https://nodejs.org) ≥ 22.5 (built-in `node:sqlite`)
 
 ## Installation (global)
 
@@ -156,12 +176,14 @@ The bus is a shared SQLite file `~/.mismcp/bus.db` (WAL, busy_timeout), so even 
 # 1. copy bus into the global opencode config
 mkdir -p ~/.config/opencode
 cp -R bus ~/.config/opencode/bus
-cd ~/.config/opencode/bus && bun install
+cd ~/.config/opencode/bus && npm install && npm run build
 
 # 2. copy the plugin into the global plugin folder
 mkdir -p ~/.config/opencode/plugins
 cp plugin/mismcp.ts ~/.config/opencode/plugins/
 ```
+
+Bun is no longer required: opencode is a self-contained binary with its own embedded Bun runtime (which runs the plugin), and the MCP server runs on Node with the built-in `node:sqlite`. On Windows machines where bun is blocked by corporate policy, having Node installed is enough.
 
 The plugin lives in `~/.config/opencode/plugins/mismcp.ts` and is auto-loaded at startup by any instance. The MCP server must be wired up in the global config `~/.config/opencode/opencode.json` (or `opencode.jsonc` if it exists):
 
@@ -170,7 +192,7 @@ The plugin lives in `~/.config/opencode/plugins/mismcp.ts` and is auto-loaded at
   "mcp": {
     "mismcp": {
       "type": "local",
-      "command": ["bun", "run", "/Users/<you>/.config/opencode/bus/src/mcp-server.ts"],
+      "command": ["node", "--experimental-sqlite", "/Users/<you>/.config/opencode/bus/dist/mcp-server.js"],
       "environment": {
         "AGENT_ID": "{env:AGENT_ID}",
         "BUS_PATH": "{env:BUS_PATH}"
@@ -179,6 +201,8 @@ The plugin lives in `~/.config/opencode/plugins/mismcp.ts` and is auto-loaded at
   }
 }
 ```
+
+The `--experimental-sqlite` flag is required for Node 22.5–22.12 and is harmless on newer versions.
 
 Then **restart opencode** for the config to take effect.
 

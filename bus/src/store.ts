@@ -1,4 +1,4 @@
-import { Database } from "bun:sqlite"
+import { DatabaseSync } from "node:sqlite"
 import { mkdirSync } from "node:fs"
 import { dirname } from "node:path"
 
@@ -34,7 +34,7 @@ export function openStore(dbPath: string): Store {
     mkdirSync(dirname(dbPath), { recursive: true })
   }
 
-  const db = new Database(dbPath)
+  const db = new DatabaseSync(dbPath)
   db.exec("PRAGMA journal_mode = WAL")
   db.exec("PRAGMA busy_timeout = 5000")
   db.exec("PRAGMA synchronous = NORMAL")
@@ -89,7 +89,7 @@ export function openStore(dbPath: string): Store {
     },
 
     inbox(agentId) {
-      return inboxStmt.all(agentId) as Message[]
+      return inboxStmt.all(agentId) as unknown as Message[]
     },
 
     ack(id) {
@@ -101,7 +101,7 @@ export function openStore(dbPath: string): Store {
     },
 
     agents(ttlMs = DEFAULT_TTL_MS) {
-      return agentsStmt.all(Date.now() - ttlMs) as AgentRow[]
+      return agentsStmt.all(Date.now() - ttlMs) as unknown as AgentRow[]
     },
   }
 }

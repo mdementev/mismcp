@@ -9,7 +9,13 @@
   "devDependencies": {
     "@opencode-ai/plugin": "^1.18.25",
     "@opencode-ai/sdk": "^1.18.25",
-    "@types/bun": "^1.1.0",
+    "@types/node": "^22.5.0",
     "typescript": "^5.0.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --experimental-sqlite dist/mcp-server.js",
+    "test": "npm run build && node --test \"dist/*.test.js\"",
+    "test:e2e": "npm run build && tsc -p tsconfig.e2e.json && node --experimental-sqlite dist/e2e-bus-check.js"
   }
 }

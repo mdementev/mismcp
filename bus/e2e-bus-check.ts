@@ -1,6 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
-import { openStore } from "./src/store"
+import { openStore } from "./src/store.js"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { mkdtempSync, rmSync } from "node:fs"
@@ -10,8 +10,8 @@ const busPath = join(mkdtempSync(join(tmpdir(), "mismcp-e2e-")), "bus.db")
 async function spawn(agentId: string) {
   const client = new Client({ name: "probe", version: "0.0.1" })
   const transport = new StdioClientTransport({
-    command: "bun",
-    args: ["run", "src/mcp-server.ts"],
+    command: process.execPath,
+    args: ["--experimental-sqlite", "dist/mcp-server.js"],
     env: { ...process.env, AGENT_ID: agentId, BUS_PATH: busPath },
   })
   await client.connect(transport)

@@ -3,7 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod"
 import { join } from "node:path"
 import { homedir } from "node:os"
-import { openStore } from "./store"
+import { openStore } from "./store.js"
 
 const agentId = (process.env.AGENT_ID ?? "").trim()
 const busPath =

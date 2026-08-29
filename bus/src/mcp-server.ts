@@ -17,20 +17,41 @@ server.registerTool(
   {
     title: "Send a message to another agent",
     description:
-      "Send a message to another agent on the shared bus. " +
-      "recipient is the AGENT_ID of another running opencode instance (see the roster injected into your context). " +
-      'Use type "question" to ask, type "answer" to reply to a received question. ' +
-      "When answering a question, put your full, structured answer in the content argument.",
+      "Send a message to another opencode agent over the shared bus. " +
+      "CALL THIS TOOL DIRECTLY — do not research the bus, AGENT_ID, recipients, or source files; " +
+      "your context already contains a line listing the online agents: " +
+      "\"Available agents to ask via mismcp_bus_send: <id1, id2, ...>\". " +
+      "Copy a recipient from that line verbatim. " +
+      'Use type "question" to ask another agent something (they reply asynchronously via this same tool). ' +
+      'Use type "answer" to reply to a question you received ("Question from X: ..."). ' +
+      'Example: mismcp_bus_send(recipient: "tester", type: "question", content: "How are you?"). ' +
+      "If you don't know a valid recipient ID, say so instead of guessing.",
     inputSchema: {
-      recipient: z.string().min(1).describe("AGENT_ID of the receiving agent"),
-      content: z.string().min(1).describe("message body"),
-      type: z.enum(["question", "answer"]).describe("question to ask, or answer to a question"),
+      recipient: z
+        .string()
+        .min(1)
+        .describe(
+          "AGENT_ID from the 'Available agents to ask via mismcp_bus_send:' line in your context, e.g. \"tester\"",
+        ),
+      content: z
+        .string()
+        .min(1)
+        .describe('message body; for type "answer", put your full structured reply here'),
+      type: z
+        .enum(["question", "answer"])
+        .describe('"question" = ask another agent; "answer" = reply to a received question'),
     },
   },
   async ({ recipient, content, type }) => {
     if (!agentId) {
       return {
         content: [{ type: "text", text: "AGENT_ID is not set — cannot send messages" }],
+        isError: true,
+      }
+    }
+    if (recipient === agentId) {
+      return {
+        content: [{ type: "text", text: `refusing to send a message to yourself ("${agentId}") — pick another agent from the roster` }],
         isError: true,
       }
     }

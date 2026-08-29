@@ -118,7 +118,7 @@ AGENT_ID=sut_expert opencode
 - Входящее сообщение пушится в последнюю активную (не занятую) сессию этого инстанса:
   - `question`: «Вопрос от X: ... Исследуй и отправь структурированный ответ X через mismcp_bus_send(..., type: "answer", ...). Финальный ответ — в аргументе тула.»
   - `answer`: «Ответ от X: ...» — без инструкции отвечать.
-- После успешного пуша сообщение помечается `acked`. Если сессия занята — сообщение остаётся в очереди и доставляется следующим poll'ом.
+- Сообщение «забирается» из очереди (ack) сразу при подборе poll'ом, **до** пуша в сессию, поэтому перекрывающиеся poll'ы не доставят его повторно. Ретраев нет: если пуш не удался или подходящей сессии нет — сообщение считается обработанным и забывается (в лог пишется ошибка). Пуш — неблокирующий `promptAsync`, poll-цикл не висит до полного ответа агента.
 
 ## Troubleshooting
 
@@ -248,7 +248,7 @@ Entries with `last_seen` older than 30s are considered offline — a gone instan
 - An incoming message is pushed into the latest active (not busy) session of this instance:
   - `question`: "Question from X: ... Research if needed, then send a structured answer to X via mismcp_bus_send(..., type: "answer", ...). Put the final answer in the tool argument."
   - `answer`: "Answer from X: ..." — with no instruction to reply.
-- After a successful push the message is marked `acked`. If the session is busy — the message stays in the queue and is delivered on the next poll.
+- A message is claimed (acked) from the queue as soon as a poll picks it, **before** the push into the session, so overlapping polls never deliver it twice. There are no retries: if the push fails or no suitable session exists, the message is treated as handled and forgotten (the error is logged). The push uses non-blocking `promptAsync` — the poll loop does not wait for the agent's full reply.
 
 ## Troubleshooting
 

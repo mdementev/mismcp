@@ -44,12 +44,13 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
   const injectRoster = async () => {
     const roster = store
       .agents()
+      .filter((a) => a.agent_id !== agentId)
       .map((a) => a.agent_id)
       .join(", ")
     if (roster === rosterCache) return
     rosterCache = roster
     const text = roster
-      ? `Available agents to ask via mismcp_bus_send: ${roster}`
+      ? `Available agents to ask via mismcp_bus_send (copy an ID from this list): ${roster}`
       : "No other agents are online right now."
     const res = await client.session.list()
     const sessions = unwrap(res)
@@ -75,9 +76,10 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
     return free.sort((a, b) => b.time.updated - a.time.updated)[0]
   }
 
-  const pushMessage = async (msg: Message): Promise<boolean> => {
+  const pushMessage = async (msg: Message): Promise<void> => {
+    store.ack(msg.id)
     const session = await findActiveSession()
-    if (!session) return false
+    if (!session) return
 
     const text =
       msg.type === "question"
@@ -87,12 +89,10 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
           `Put the final answer in the tool argument.`
         : `Answer from ${msg.from}:\n${msg.content}`
 
-    await client.session.prompt({
+    await client.session.promptAsync({
       path: { id: session.id },
       body: { parts: [{ type: "text", text }] },
     })
-    store.ack(msg.id)
-    return true
   }
 
   const poll = async () => {
@@ -107,13 +107,12 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
 
     for (const msg of store.inbox(agentId)) {
       try {
-        if (await pushMessage(msg)) continue
+        await pushMessage(msg)
       } catch (err) {
         await client.app.log({
           body: { service: "mismcp", level: "error", message: `push: ${String(err)}` },
         })
       }
-      break
     }
   }
 

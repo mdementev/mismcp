@@ -54,6 +54,16 @@ describe("mcp-server", () => {
     })
   })
 
+  test("mismcp_bus_send rejects sending to self", async () => {
+    await withServer(async (client) => {
+      const res = await client.callTool({
+        name: "mismcp_bus_send",
+        arguments: { recipient: "tester", type: "question", content: "hello me?" },
+      })
+      expect(res.isError).toBe(true)
+    })
+  })
+
   test("mismcp_bus_send rejects invalid type", async () => {
     await withServer(async (client) => {
       const res = await client.callTool({

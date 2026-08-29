@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "agentbus": {
+      "type": "local",
+      "command": ["bun", "run", "./bus/src/mcp-server.ts"],
+      "environment": {
+        "AGENT_ID": "{env:AGENT_ID}",
+        "BUS_PATH": "{env:BUS_PATH}"
+      }
+    }
+  }
+}

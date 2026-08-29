@@ -1,0 +1,12 @@
+{
+  "name": "agentbus-plugin",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@opencode-ai/plugin": "^1.18.25",
+    "@opencode-ai/sdk": "^1.18.25"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.0"
+  }
+}

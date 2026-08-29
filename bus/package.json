@@ -1,0 +1,15 @@
+{
+  "name": "agentbus",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.5.2"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.18.25",
+    "@opencode-ai/sdk": "^1.18.25",
+    "@types/bun": "^1.1.0",
+    "typescript": "^5.0.0"
+  }
+}

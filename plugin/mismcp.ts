@@ -40,6 +40,7 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
   store.register(agentId)
 
   let rosterCache = ""
+  const injectedSessions = new Set<string>()
 
   const injectRoster = async () => {
     const roster = store
@@ -47,17 +48,23 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
       .filter((a) => a.agent_id !== agentId)
       .map((a) => a.agent_id)
       .join(", ")
-    if (roster === rosterCache) return
-    rosterCache = roster
+    if (roster !== rosterCache) {
+      rosterCache = roster
+      injectedSessions.clear()
+    }
+
+    const session = await findActiveSession()
+    if (!session) return
+    if (injectedSessions.has(session.id)) return
+
     const text = roster
       ? `Available agents to ask via mismcp_bus_send (copy an ID from this list): ${roster}`
       : "No other agents are online right now."
-    const session = await findActiveSession()
-    if (!session) return
     await client.session.prompt({
       path: { id: session.id },
       body: { noReply: true, parts: [{ type: "text", text }] },
     })
+    injectedSessions.add(session.id)
   }
 
   const findActiveSession = async (): Promise<Session | null> => {
@@ -121,7 +128,10 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
       clearInterval(timer)
     },
     event: async ({ event }) => {
-      if (event.type === "session.created" || event.type === "session.compacted") {
+      if (event.type === "session.created") {
+        await injectRoster()
+      } else if (event.type === "session.compacted") {
+        injectedSessions.delete(event.properties.sessionID)
         await injectRoster()
       }
     },

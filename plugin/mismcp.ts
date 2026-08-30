@@ -124,7 +124,7 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
       clearInterval(timer)
     },
     event: async ({ event }) => {
-      if (event.type === "session.created") {
+      if (event.type === "session.created" || event.type === "session.compacted") {
         await injectRoster()
       }
     },

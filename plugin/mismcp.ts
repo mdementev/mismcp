@@ -52,15 +52,12 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
     const text = roster
       ? `Available agents to ask via mismcp_bus_send (copy an ID from this list): ${roster}`
       : "No other agents are online right now."
-    const res = await client.session.list()
-    const sessions = unwrap(res)
-    for (const s of sessions) {
-      if (s.directory !== directory) continue
-      await client.session.prompt({
-        path: { id: s.id },
-        body: { noReply: true, parts: [{ type: "text", text }] },
-      })
-    }
+    const session = await findActiveSession()
+    if (!session) return
+    await client.session.prompt({
+      path: { id: session.id },
+      body: { noReply: true, parts: [{ type: "text", text }] },
+    })
   }
 
   const findActiveSession = async (): Promise<Session | null> => {

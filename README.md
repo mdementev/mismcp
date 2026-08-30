@@ -176,7 +176,7 @@ Entries with `last_seen` older than 30s are considered offline — a gone instan
 
 - Empty `AGENT_ID` → push disabled.
 - Every ~3s: heartbeat → roster → inbox check.
-- The roster (`Available agents to ask via mismcp_bus_send: ...`) is injected into sessions when it changes and when a new session is created.
+- The roster (`Available agents to ask via mismcp_bus_send: ...`) is injected into the latest active (not busy) session of this instance when it changes, when a new session is created, or after a session is compacted.
 - An incoming message is pushed into the latest active (not busy) session of this instance:
   - `question`: "Question from X: ... Research if needed, then send a structured answer to X via mismcp_bus_send(..., type: "answer", ...). Put the final answer in the tool argument."
   - `answer`: "Answer from X: ..." — with no instruction to reply.

@@ -188,6 +188,10 @@ Entries with `last_seen` older than 30s are considered offline — a gone instan
 - **Plugin logs**: run opencode with `--print-logs --log-level DEBUG` (service `mismcp`).
 - **Different databases**: make sure both instances see the same `BUS_PATH` (default `~/.mismcp/bus.db`).
 
+## License
+
+[MIT](LICENSE) © 2026 Misha
+
 ---
 
 # mismcp — stateful multi-agent for opencode

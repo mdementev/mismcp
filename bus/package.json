@@ -1,6 +1,7 @@
 {
   "name": "mismcp",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

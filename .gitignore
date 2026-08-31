@@ -2,3 +2,6 @@ node_modules/
 bun.lock
 bus/dist/
 bus/src/.tmp-*
+.DS_Store
+agents-startup-scripts-demo/mac/isolated/agent-*/
+agents-startup-scripts-demo/windows/isolated/agent-*/

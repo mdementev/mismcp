@@ -176,17 +176,23 @@ Entries with `last_seen` older than 30s are considered offline — a gone instan
 
 - Empty `AGENT_ID` → push disabled.
 - Every ~3s: heartbeat → roster → inbox check.
-- The roster (`Available agents to ask via mismcp_bus_send: ...`) is injected into the latest active (not busy) session of this instance when it changes, when a new session is created, or after a session is compacted.
-- An incoming message is pushed into the latest active (not busy) session of this instance:
+- **Delivery targets only this instance's own sessions** — root sessions (no `parentID`) created by this instance (`session.created` events) or ever run by it (the per-process status map). Other agents' sessions in the same directory are never touched, even though they share the same session DB.
+- The roster (`Available agents to ask via mismcp_bus_send: ...`) is injected into the latest own (not busy) session of this instance when it changes, when a new session is created, or after a session is compacted.
+- An incoming message is pushed into the latest own session of this instance (no busy filter):
   - `question`: "Question from X: ... Research if needed, then send a structured answer to X via mismcp_bus_send(..., type: "answer", ...). Put the final answer in the tool argument."
   - `answer`: "Answer from X: ..." — with no instruction to reply.
+- If the session is busy, the message is not lost: `promptAsync` saves it into the session and opencode's own run loop picks it up natively right after the current turn finishes (same path as manual input in the TUI). No custom queue in the plugin.
+- If the instance has no own session yet (fresh start, restored session before its first turn), the message is dropped with a warning log.
 - A message is claimed (acked) from the queue as soon as a poll picks it, **before** the push into the session, so overlapping polls never deliver it twice. There are no retries: if the push fails or no suitable session exists, the message is treated as handled and forgotten (the error is logged). The push uses non-blocking `promptAsync` — the poll loop does not wait for the agent's full reply.
+- Multiple agents in one directory work (see `agents-startup-scripts-demo/mac`); for a fully isolated setup where sessions can never mix, use the `isolated` script variants (`mac/isolated`, `windows/isolated`) — each agent runs in its own subdirectory.
 
 ## Troubleshooting
 
 - **The tool is not visible to the agent**: make sure the MCP server is up — `opencode mcp list` (name `mismcp`) — and that `AGENT_ID` is set.
 - **Plugin logs**: run opencode with `--print-logs --log-level DEBUG` (service `mismcp`).
 - **Different databases**: make sure both instances see the same `BUS_PATH` (default `~/.mismcp/bus.db`).
+- **Message dropped with "no owned session" warning**: the instance has not created or run any session yet — send the agent its first message, then re-send the bus message.
+- **Answers come from the wrong session**: don't run two instances with the same `AGENT_ID`; and make sure the plugin is installed in all instances (reinstall after updates: `./install.sh`).
 
 ## License
 
@@ -372,14 +378,20 @@ $env:AGENT_ID = "sut_expert"; opencode
 
 - `AGENT_ID` пуст → пуш отключён.
 - Каждые ~3с: heartbeat → ростер → проверка инбокса.
-- Ростер (`Available agents to ask via mismcp_bus_send: ...`) инжектится в сессии при изменении и при создании новой сессии.
-- Входящее сообщение пушится в последнюю активную (не занятую) сессию этого инстанса:
+- **Доставка идёт только в «свои» сессии этого инстанса** — корневые (без `parentID`), созданные этим инстансом (события `session.created`) либо когда-либо запускавшиеся в нём (инстанс-локальная карта статусов). Сессии других агентов в той же директории никогда не трогаются, хотя они лежат в одной БД.
+- Ростер (`Available agents to ask via mismcp_bus_send: ...`) инжектится в последнюю свою (не занятую) сессию при изменении, при создании новой сессии и после compaction.
+- Входящее сообщение пушится в последнюю свою сессию этого инстанса (без фильтра занятости):
   - `question`: «Вопрос от X: ... Исследуй и отправь структурированный ответ X через mismcp_bus_send(..., type: "answer", ...). Финальный ответ — в аргументе тула.»
   - `answer`: «Ответ от X: ...» — без инструкции отвечать.
+- Если сессия занята, сообщение не теряется: `promptAsync` сохраняет его в сессию, и собственный цикл opencode нативно подхватывает его сразу после завершения текущего turn'а (тот же путь, что у ручного ввода в TUI). Своей очереди в плагине нет.
+- Если своей сессии ещё нет (свежий старт, восстановленная сессия до первого turn'а) — сообщение отбрасывается с warning-логом.
 - Сообщение «забирается» из очереди (ack) сразу при подборе poll'ом, **до** пуша в сессию, поэтому перекрывающиеся poll'ы не доставят его повторно. Ретраев нет: если пуш не удался или подходящей сессии нет — сообщение считается обработанным и забывается (в лог пишется ошибка). Пуш — неблокирующий `promptAsync`, poll-цикл не висит до полного ответа агента.
+- Несколько агентов в одной директории работают (см. `agents-startup-scripts-demo/mac`); для полной изоляции, где сессии физически не могут смешаться, используй варианты `isolated` (`mac/isolated`, `windows/isolated`) — каждый агент работает в своём подкаталоге.
 
 ## Troubleshooting
 
 - **Тул не виден агенту**: проверь, что MCP-сервер поднялся — `opencode mcp list` (имя `mismcp`), и что `AGENT_ID` задан.
 - **Логи плагина**: запусти opencode с `--print-logs --log-level DEBUG` (сервис `mismcp`).
 - **Разные базы**: убедись, что оба инстанса видят один `BUS_PATH` (по умолчанию `~/.mismcp/bus.db`).
+- **Сообщение отброшено с warning'ом «no owned session»**: инстанс ещё не создал и не запускал ни одной сессии — отправь агенту первое сообщение и повтори вопрос.
+- **Отвечает не та сессия**: не запускай два инстанса с одинаковым `AGENT_ID`; убедись, что плагин установлен во всех инстансах (переустановка после обновлений: `./install.sh`).

@@ -41,6 +41,7 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
 
   let rosterCache = ""
   const injectedSessions = new Set<string>()
+  const ownedSessions = new Set<string>()
 
   const injectRoster = async () => {
     const roster = store
@@ -53,7 +54,7 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
       injectedSessions.clear()
     }
 
-    const session = await findActiveSession()
+    const session = await findOwnedSession(true)
     if (!session) return
     if (injectedSessions.has(session.id)) return
 
@@ -67,23 +68,36 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
     injectedSessions.add(session.id)
   }
 
-  const findActiveSession = async (): Promise<Session | null> => {
+  // Sessions this instance actually uses: created here (events) or run here
+  // (SessionStatus is per-process). Other agents' sessions share the same
+  // directory and DB — they must never receive our messages.
+  const findOwnedSession = async (freeOnly: boolean): Promise<Session | null> => {
     const sessions = unwrap(await client.session.list()).filter(
-      (s) => s.directory === directory,
+      (s) => s.directory === directory && !s.parentID,
     )
     if (sessions.length === 0) return null
 
     const statuses = unwrap(await client.session.status({ query: { directory } }))
-    const free = sessions.filter((s) => statuses[s.id]?.type !== "busy")
-    if (free.length === 0) return null
+    const owned = sessions.filter((s) => ownedSessions.has(s.id) || statuses[s.id] !== undefined)
+    const candidates = freeOnly ? owned.filter((s) => statuses[s.id]?.type !== "busy") : owned
+    if (candidates.length === 0) return null
 
-    return free.sort((a, b) => b.time.updated - a.time.updated)[0]
+    return candidates.sort((a, b) => b.time.updated - a.time.updated)[0]
   }
 
   const pushMessage = async (msg: Message): Promise<void> => {
     store.ack(msg.id)
-    const session = await findActiveSession()
-    if (!session) return
+    const session = await findOwnedSession(false)
+    if (!session) {
+      await client.app.log({
+        body: {
+          service: "mismcp",
+          level: "warn",
+          message: `no owned session in this instance; message from ${msg.from} dropped`,
+        },
+      })
+      return
+    }
 
     const text =
       msg.type === "question"
@@ -129,7 +143,11 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
     },
     event: async ({ event }) => {
       if (event.type === "session.created") {
+        ownedSessions.add(event.properties.info.id)
         await injectRoster()
+      } else if (event.type === "session.deleted") {
+        ownedSessions.delete(event.properties.info.id)
+        injectedSessions.delete(event.properties.info.id)
       } else if (event.type === "session.compacted") {
         injectedSessions.delete(event.properties.sessionID)
         await injectRoster()

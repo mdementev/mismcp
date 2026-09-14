@@ -1,8 +1,8 @@
 import { tool, type Plugin } from "@opencode-ai/plugin"
 import { homedir } from "node:os"
 import { join } from "node:path"
-import { openStore } from "../src/store"
-import type { Message } from "../src/store"
+import { openStore } from "../src/store.ts"
+import type { Message } from "../src/store.ts"
 
 type DataResult<T> = { data: T | undefined }
 

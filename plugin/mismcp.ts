@@ -81,14 +81,14 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
       injectedSessions.clear()
     }
 
-    const session = await findOwnedSession(true)
+    const session = await findOwnedSession(false)
     if (!session) return
     if (injectedSessions.has(session.id)) return
 
     const text = roster
       ? `Available agents to ask via mismcp_bus_send (copy an ID from this list): ${roster}`
       : "No other agents are online right now."
-    await client.session.prompt({
+    await client.session.promptAsync({
       path: { id: session.id },
       body: { noReply: true, parts: [{ type: "text", text }] },
     })

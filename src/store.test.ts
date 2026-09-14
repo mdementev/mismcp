@@ -71,6 +71,62 @@ describe("store", () => {
     assert.equal(s.inbox("sut_expert").length, 20)
   })
 
+  it("4 agents register and see each other", () => {
+    const s = store()
+    s.register("agent_a")
+    s.register("agent_b")
+    s.register("agent_c")
+    s.register("agent_d")
+
+    const ids = s.agents().map((a) => a.agent_id).sort()
+    assert.deepEqual(ids, ["agent_a", "agent_b", "agent_c", "agent_d"])
+  })
+
+  it("4 file-backed stores see each other's agents", () => {
+    const path = `${import.meta.dirname}/.tmp-test-multi.db`
+    rmSync(path, { force: true })
+
+    const stores = Array.from({ length: 4 }, () => openStore(path))
+    stores.forEach((s, i) => s.register(`agent_${i}`))
+
+    const allAgents = stores[0].agents().map((a) => a.agent_id).sort()
+    assert.deepEqual(allAgents, ["agent_0", "agent_1", "agent_2", "agent_3"])
+
+    rmSync(path, { force: true })
+  })
+
+  it("4 agents send messages to each other (mesh)", () => {
+    const s = store()
+    s.register("a")
+    s.register("b")
+    s.register("c")
+    s.register("d")
+
+    s.send({ from: "a", recipient: "b", type: "question", content: "q1" })
+    s.send({ from: "b", recipient: "c", type: "question", content: "q2" })
+    s.send({ from: "c", recipient: "d", type: "question", content: "q3" })
+    s.send({ from: "d", recipient: "a", type: "question", content: "q4" })
+
+    assert.equal(s.inbox("a").length, 1)
+    assert.equal(s.inbox("b").length, 1)
+    assert.equal(s.inbox("c").length, 1)
+    assert.equal(s.inbox("d").length, 1)
+    assert.equal(s.inbox("a")[0].content, "q4")
+    assert.equal(s.inbox("d")[0].content, "q3")
+  })
+
+  it("agent disappears from roster after TTL", async () => {
+    const s = store()
+    s.register("agent_a")
+    s.register("agent_b")
+
+    await sleep(5)
+    s.register("agent_a")
+
+    const ids = s.agents(0).map((a) => a.agent_id)
+    assert.deepEqual(ids, ["agent_a"])
+  })
+
   it("file-backed store persists", () => {
     const path = `${import.meta.dirname}/.tmp-test.db`
     rmSync(path, { force: true })

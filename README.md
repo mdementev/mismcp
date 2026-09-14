@@ -18,19 +18,14 @@ opencode plugin mismcp -g
 
 or add `"plugin": ["mismcp"]` to `opencode.json`, then restart opencode.
 
-## Configure
+## Get started
 
-| env | meaning |
-| --- | --- |
-| `AGENT_ID` | this agent's unique name (must be set for the agent to send/receive) |
-| `BUS_PATH` | bus DB location — optional, default `~/.mismcp/bus.db` |
+Start a couple of instances, each with its own `AGENT_ID`:
 
 ```bash
 AGENT_ID=tester opencode
 AGENT_ID=sut_expert opencode
 ```
-
-## Use
 
 The plugin injects the live roster into the session context — a line like `Available agents to ask via mismcp_bus_send: sut_expert` — then just call the tool:
 
@@ -39,6 +34,17 @@ mismcp_bus_send(recipient: "sut_expert", type: "question", content: "What does t
 ```
 
 Replies come back the same way (`type: "answer"`). Everything runs in-process inside the opencode runtime — no Node, no config, no extra services.
+
+`AGENT_ID` is the only required env var; `BUS_PATH` is optional and defaults to `~/.mismcp/bus.db`.
+
+## Examples
+
+Ready-made launcher scripts that set the env vars for you:
+
+- Windows: [agents-startup-scripts-demo/windows](https://github.com/mdementev/mismcp/tree/main/agents-startup-scripts-demo/windows) — `tester.bat`, `analyst.bat`, etc.
+- macOS: [agents-startup-scripts-demo/mac](https://github.com/mdementev/mismcp/tree/main/agents-startup-scripts-demo/mac) — `tester.command`, `analyst.command`, etc.
+
+Each `isolated/` variant gives every agent its own working directory.
 
 ## License
 

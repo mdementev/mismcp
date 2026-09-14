@@ -5,4 +5,4 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 mkdir -p "$DIR/agent-developer"
 cd "$DIR/agent-developer"
 export AGENT_ID="developer"
-exec opencode
+exec opencode --prompt "hi"

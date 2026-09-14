@@ -1,4 +1,4 @@
 @echo off
 set "AGENT_ID=developer"
 title opencode - developer
-opencode
+opencode --prompt "hi"

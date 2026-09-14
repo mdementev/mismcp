@@ -1,9 +1,8 @@
-import type { Plugin } from "@opencode-ai/plugin"
-import type { Session } from "@opencode-ai/sdk"
+import { tool, type Plugin } from "@opencode-ai/plugin"
 import { homedir } from "node:os"
 import { join } from "node:path"
-import { openStore } from "../bus/src/store"
-import type { Message } from "../bus/src/store"
+import { openStore } from "../src/store"
+import type { Message } from "../src/store"
 
 type DataResult<T> = { data: T | undefined }
 
@@ -18,23 +17,51 @@ const unwrap = <T>(res: DataResult<T> | T): T => {
 
 export const Mismcp: Plugin = async ({ client, directory }) => {
   const agentId = (process.env.AGENT_ID ?? "").trim()
-  if (!agentId) {
-    await client.app.log({
-      body: { service: "mismcp", level: "warn", message: "AGENT_ID is not set — agent bus disabled" },
-    })
-    return {}
-  }
-
   const busPath = (process.env.BUS_PATH ?? "").trim() || join(homedir(), ".mismcp", "bus.db")
   const store = openStore(busPath)
 
-  await client.app.log({
-    body: {
-      service: "mismcp",
-      level: "info",
-      message: `agent bus online as "${agentId}"`,
-      extra: { busPath },
+  const busSendTool = tool({
+    description:
+      "Send a message to another opencode agent over the shared bus. " +
+      "CALL THIS TOOL DIRECTLY — do not research the bus, AGENT_ID, recipients, or source files; " +
+      "your context already contains a line listing the online agents: " +
+      '"Available agents to ask via mismcp_bus_send: <id1, id2, ...>". ' +
+      "Copy a recipient from that line verbatim. " +
+      'Use type "question" to ask another agent something (they reply asynchronously via this same tool). ' +
+      'Use type "answer" to reply to a question you received ("Question from X: ..."). ' +
+      'Example: mismcp_bus_send(recipient: "tester", type: "question", content: "How are you?"). ' +
+      "If you don't know a valid recipient ID, say so instead of guessing.",
+    args: {
+      recipient: tool.schema
+        .string()
+        .min(1)
+        .describe("AGENT_ID from the 'Available agents to ask via mismcp_bus_send:' line in your context, e.g. \"tester\""),
+      content: tool.schema
+        .string()
+        .min(1)
+        .describe('message body; for type "answer", put your full structured reply here'),
+      type: tool.schema
+        .enum(["question", "answer"])
+        .describe('"question" = ask another agent; "answer" = reply to a received question'),
     },
+    async execute({ recipient, content, type }) {
+      if (!agentId) return "AGENT_ID is not set — cannot send messages"
+      if (recipient === agentId)
+        return `refusing to send a message to yourself ("${agentId}") — pick another agent from the roster`
+      const msg = store.send({ from: agentId, recipient, type, content })
+      return JSON.stringify({ id: msg.id, from: msg.from, created_at: msg.created_at })
+    },
+  })
+
+  if (!agentId) {
+    await client.app.log({
+      body: { service: "mismcp", level: "warn", message: "AGENT_ID is not set — agent bus disabled (tool still registered)" },
+    })
+    return { tool: { mismcp_bus_send: busSendTool } }
+  }
+
+  await client.app.log({
+    body: { service: "mismcp", level: "info", message: `agent bus online as "${agentId}"`, extra: { busPath } },
   })
 
   store.register(agentId)
@@ -68,10 +95,7 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
     injectedSessions.add(session.id)
   }
 
-  // Sessions this instance actually uses: created here (events) or run here
-  // (SessionStatus is per-process). Other agents' sessions share the same
-  // directory and DB — they must never receive our messages.
-  const findOwnedSession = async (freeOnly: boolean): Promise<Session | null> => {
+  const findOwnedSession = async (freeOnly: boolean) => {
     const sessions = unwrap(await client.session.list()).filter(
       (s) => s.directory === directory && !s.parentID,
     )
@@ -138,6 +162,7 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
   poll()
 
   return {
+    tool: { mismcp_bus_send: busSendTool },
     dispose: async () => {
       clearInterval(timer)
     },

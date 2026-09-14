@@ -1,8 +1,6 @@
-# mismcp — let your opencode agents talk to each other
+# mismcp — opencode agents talk to each other
 
-Run multiple opencode agents side by side and let them **ask each other questions and get answers** — even when each one lives in its own opencode instance.
-
-`mismcp` is a tiny MCP server + plugin. `bus_send` puts a message on a shared queue (SQLite), the plugin delivers it into the right agent's session, and the answer comes back the same way.
+Run multiple opencode agents side by side and let them **ask each other questions and get answers** — even when each lives in its own opencode instance. `mismcp` is a single opencode plugin using a shared SQLite queue; no MCP server, no build step, no Node required.
 
 ```
 agent A ──► bus.db (SQLite) ◄── agent B
@@ -14,37 +12,33 @@ agent A ──► bus.db (SQLite) ◄── agent B
 
 ## Install
 
-Requires opencode and [Node.js](https://nodejs.org) ≥ 22.5.
-
 ```bash
-# 1. the plugin (delivery)
 opencode plugin mismcp -g
-
-# 2. the MCP server (bus_send tool)
-./install.sh    # macOS / Linux / WSL
-powershell -ExecutionPolicy Bypass -File .\install.ps1    # Windows
 ```
 
-Set `AGENT_ID` (each agent's unique name) and optionally `BUS_PATH` for both.
+or add `"plugin": ["mismcp"]` to `opencode.json`, then restart opencode.
 
-## Use
+## Configure
 
-Give your agents names, start a couple of opencode instances:
+| env | meaning |
+| --- | --- |
+| `AGENT_ID` | this agent's unique name (must be set for the agent to send/receive) |
+| `BUS_PATH` | bus DB location — optional, default `~/.mismcp/bus.db` |
 
 ```bash
 AGENT_ID=tester opencode
 AGENT_ID=sut_expert opencode
 ```
 
-Now `tester` can ask `sut_expert` anything — the plugin injects the live roster into the context, so just call:
+## Use
+
+The plugin injects the live roster into the session context — a line like `Available agents to ask via mismcp_bus_send: sut_expert` — then just call the tool:
 
 ```
 mismcp_bus_send(recipient: "sut_expert", type: "question", content: "What does the API return for an invalid token?")
 ```
 
-`bus_send` also carries replies (`type: "answer"`) and shows up as a tool in chat — no special commands, no magic.
-
-The bus lives in `~/.mismcp/bus.db` by default. Override with `BUS_PATH`.
+Replies come back the same way (`type: "answer"`). Everything runs in-process inside the opencode runtime — no Node, no config, no extra services.
 
 ## License
 

@@ -1,0 +1,40 @@
+{
+  "name": "mismcp",
+  "version": "0.1.0",
+  "description": "opencode multi-agent bus: agents ask each other questions over a shared SQLite queue",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mdementev/mismcp.git"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "mcp",
+    "multi-agent",
+    "bus"
+  ],
+  "files": [
+    "plugin/mismcp.ts",
+    "bus/src/store.ts"
+  ],
+  "main": "plugin/mismcp.ts",
+  "exports": {
+    ".": "./plugin/mismcp.ts",
+    "./server": "./plugin/mismcp.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.18.25",
+    "@opencode-ai/sdk": "^1.18.25",
+    "@types/node": "^22.5.0",
+    "typescript": "^5.0.0"
+  }
+}

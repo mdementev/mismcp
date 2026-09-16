@@ -1,6 +1,6 @@
 {
   "name": "mismcp",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "opencode multi-agent bus: agents ask each other questions over a shared SQLite queue",
   "type": "module",
   "license": "MIT",

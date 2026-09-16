@@ -4,6 +4,8 @@ import { join } from "node:path"
 import { openStore } from "../src/store.ts"
 import type { Message } from "../src/store.ts"
 
+const ROSTER_PREFIX = "Available agents to ask via mismcp_bus_send"
+
 type DataResult<T> = { data: T | undefined }
 
 const unwrap = <T>(res: DataResult<T> | T): T => {
@@ -66,39 +68,51 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
 
   store.register(agentId)
 
+  const peers = () =>
+    store
+      .agents()
+      .filter((a) => a.agent_id !== agentId)
+      .map((a) => a.agent_id)
+
+  const rosterLine = () => {
+    const roster = peers().join(", ")
+    return roster
+      ? `${ROSTER_PREFIX} (copy an ID from this list): ${roster}`
+      : `${ROSTER_PREFIX}: no other agents are online right now.`
+  }
+
   let rosterCache = ""
   const injectedSessions = new Set<string>()
   const ownedSessions = new Set<string>()
 
   const injectRoster = async () => {
-    const roster = store
-      .agents()
-      .filter((a) => a.agent_id !== agentId)
-      .map((a) => a.agent_id)
-      .join(", ")
-    if (roster !== rosterCache) {
-      rosterCache = roster
+    const line = rosterLine()
+    if (line !== rosterCache) {
+      rosterCache = line
       injectedSessions.clear()
     }
 
-    const session = await findOwnedSession(false)
+    const session = await findOwnedSession(true)
     if (!session) return
     if (injectedSessions.has(session.id)) return
 
-    const text = roster
-      ? `Available agents to ask via mismcp_bus_send (copy an ID from this list): ${roster}`
-      : "No other agents are online right now."
     await client.session.promptAsync({
       path: { id: session.id },
-      body: { noReply: true, parts: [{ type: "text", text }] },
+      body: { noReply: true, parts: [{ type: "text", text: line, ignored: true }] },
     })
     injectedSessions.add(session.id)
   }
 
-  const findOwnedSession = async (freeOnly: boolean) => {
+  const refreshOwnedSessions = async () => {
     const sessions = unwrap(await client.session.list()).filter(
       (s) => s.directory === directory && !s.parentID,
     )
+    for (const s of sessions) ownedSessions.add(s.id)
+    return sessions
+  }
+
+  const findOwnedSession = async (freeOnly: boolean) => {
+    const sessions = await refreshOwnedSessions()
     if (sessions.length === 0) return null
 
     const statuses = unwrap(await client.session.status({ query: { directory } }))
@@ -163,6 +177,13 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
 
   return {
     tool: { mismcp_bus_send: busSendTool },
+    "experimental.chat.system.transform": async (input, output) => {
+      if (!input.sessionID || !ownedSessions.has(input.sessionID)) return
+      const line = rosterLine()
+      const idx = output.system.findIndex((s) => s.includes(ROSTER_PREFIX))
+      if (idx >= 0) output.system[idx] = line
+      else output.system.push(line)
+    },
     dispose: async () => {
       clearInterval(timer)
     },

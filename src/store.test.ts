@@ -127,6 +127,29 @@ describe("store", () => {
     assert.deepEqual(ids, ["agent_a"])
   })
 
+  it("remove unregisters an agent", () => {
+    const s = store()
+    s.register("tester")
+    s.register("sut_expert")
+    s.remove("tester")
+
+    assert.deepEqual(s.agents().map((a) => a.agent_id), ["sut_expert"])
+  })
+
+  it("prune deletes messages and agents older than the retention window", () => {
+    const s = store()
+    s.register("tester")
+    s.send({ from: "tester", recipient: "sut_expert", type: "question", content: "old" })
+
+    // Default retention keeps recent data.
+    assert.deepEqual(s.prune(), { messages: 0, agents: 0 })
+
+    // A negative window treats everything as expired.
+    assert.deepEqual(s.prune(-1), { messages: 1, agents: 1 })
+    assert.equal(s.inbox("sut_expert").length, 0)
+    assert.deepEqual(s.agents(), [])
+  })
+
   it("file-backed store persists", () => {
     const path = `${import.meta.dirname}/.tmp-test.db`
     rmSync(path, { force: true })

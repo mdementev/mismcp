@@ -65,6 +65,14 @@ back to `agent`. Example: `MISMCP_NAME_TEMPLATE='{dir}-agent'` gives names like
 }
 ```
 
+## Storage
+
+Everything lives in one SQLite file — `BUS_PATH`, default `~/.mismcp/bus.db`.
+Messages and agent registrations older than **2 days** are deleted automatically
+(on startup and then hourly while an instance is running), so the file does not
+grow without bound. Undelivered messages older than the window are dropped too.
+The retention window is currently not configurable.
+
 ## Examples
 
 Ready-made launcher scripts that set the env vars for you:

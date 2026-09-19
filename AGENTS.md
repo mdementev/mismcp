@@ -26,6 +26,10 @@ mismcp_bus_send(recipient: "<X>", type: "answer", content: "<полный отв
 
 Финальный ответ клади в аргумент тула, а не в чат.
 
+## Хранилище
+
+Общий файл — `~/.mismcp/bus.db` (переопределяется `BUS_PATH`). Сообщения и регистрации агентов старше 2 суток удаляются автоматически (при запуске и далее раз в час), поэтому файл не растёт бесконечно. Недоставленные сообщения старше этого срока тоже удаляются.
+
 ---
 
 # Agent Bus
@@ -55,3 +59,7 @@ mismcp_bus_send(recipient: "<X>", type: "answer", content: "<your full answer>")
 ```
 
 Put the final answer in the tool argument, not in chat.
+
+## Storage
+
+The shared file is `~/.mismcp/bus.db` (override with `BUS_PATH`). Messages and agent registrations older than 2 days are deleted automatically (on startup and hourly thereafter), so the file does not grow without bound. Undelivered messages older than the window are dropped too.

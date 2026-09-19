@@ -48,12 +48,29 @@ export interface AgentRow {
 
 const DEFAULT_TTL_MS = 30_000
 
+// Messages and agents older than this are deleted on open and on every prune.
+const DEFAULT_RETENTION_MS = 2 * 24 * 60 * 60 * 1000
+
+export interface PruneResult {
+  messages: number
+  agents: number
+}
+
 export interface Store {
   send(input: { from: string; recipient: string; type: MessageType; content: string }): Message
   inbox(agentId: string): Message[]
   ack(id: string): void
   register(agentId: string): void
+  remove(agentId: string): void
   agents(ttlMs?: number): AgentRow[]
+  prune(retentionMs?: number): PruneResult
+}
+
+const changes = (result: unknown): number => {
+  if (typeof result === "object" && result !== null && "changes" in result) {
+    return Number((result as { changes: unknown }).changes) || 0
+  }
+  return 0
 }
 
 export function openStore(dbPath: string): Store {
@@ -84,6 +101,7 @@ export function openStore(dbPath: string): Store {
     )
   `)
   db.exec("CREATE INDEX IF NOT EXISTS idx_messages_inbox ON messages (recipient, acked, created_at)")
+  db.exec("CREATE INDEX IF NOT EXISTS idx_messages_created ON messages (created_at)")
 
   const sendStmt = prepare(
     db,
@@ -103,8 +121,11 @@ export function openStore(dbPath: string): Store {
     db,
     "SELECT * FROM agents WHERE last_seen >= ? ORDER BY agent_id ASC",
   )
+  const removeStmt = prepare(db, "DELETE FROM agents WHERE agent_id = ?")
+  const pruneMessagesStmt = prepare(db, "DELETE FROM messages WHERE created_at < ?")
+  const pruneAgentsStmt = prepare(db, "DELETE FROM agents WHERE last_seen < ?")
 
-  return {
+  const store: Store = {
     send({ from, recipient, type, content }) {
       const msg: Message = {
         id: crypto.randomUUID(),
@@ -131,8 +152,22 @@ export function openStore(dbPath: string): Store {
       registerStmt.run(agentId, Date.now())
     },
 
+    remove(agentId) {
+      removeStmt.run(agentId)
+    },
+
     agents(ttlMs = DEFAULT_TTL_MS) {
       return agentsStmt.all(Date.now() - ttlMs) as unknown as AgentRow[]
     },
+
+    prune(retentionMs = DEFAULT_RETENTION_MS) {
+      const cutoff = Date.now() - retentionMs
+      const messages = changes(pruneMessagesStmt.run(cutoff))
+      const agents = changes(pruneAgentsStmt.run(cutoff))
+      return { messages, agents }
+    },
   }
+
+  store.prune()
+  return store
 }

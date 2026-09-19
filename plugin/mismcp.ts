@@ -6,6 +6,7 @@ import type { Message } from "../src/store.ts"
 import { deriveAgentId } from "../src/agent-id.ts"
 
 const ROSTER_PREFIX = "Available agents to ask via mismcp_bus_send"
+const PRUNE_INTERVAL_MS = 60 * 60 * 1000
 
 type DataResult<T> = { data: T | undefined }
 
@@ -153,8 +154,22 @@ export const Mismcp: Plugin = async ({ client, directory, worktree, project }, o
     store.ack(msg.id)
   }
 
+  let lastPrune = 0
   const poll = async () => {
     store.register(agentId)
+
+    const now = Date.now()
+    if (now - lastPrune >= PRUNE_INTERVAL_MS) {
+      lastPrune = now
+      try {
+        store.prune()
+      } catch (err) {
+        await client.app.log({
+          body: { service: "mismcp", level: "error", message: `prune: ${String(err)}` },
+        })
+      }
+    }
+
     try {
       await injectRoster()
     } catch (err) {

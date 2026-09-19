@@ -53,20 +53,32 @@ const makeClient = (status: "busy" | "idle") => {
   return { client, promptAsyncCalls }
 }
 
-const runPlugin = async (client: MockClient) => {
+type RunOptions = {
+  agentId?: string | null
+  template?: string
+  options?: Record<string, unknown>
+}
+
+const runPlugin = async (client: MockClient, opts: RunOptions = {}) => {
   const busPath = join(mkdtempSync(join(tmpdir(), "mismcp-bus-")), "bus.db")
   const prevId = process.env.AGENT_ID
   const prevBus = process.env.BUS_PATH
-  process.env.AGENT_ID = "tester"
+  const prevTemplate = process.env.MISMCP_NAME_TEMPLATE
+  if (opts.agentId === null) delete process.env.AGENT_ID
+  else process.env.AGENT_ID = opts.agentId ?? "tester"
   process.env.BUS_PATH = busPath
+  if (opts.template === undefined) delete process.env.MISMCP_NAME_TEMPLATE
+  else process.env.MISMCP_NAME_TEMPLATE = opts.template
 
   // seed two peers so the roster is non-empty
   const store = openStore(busPath)
   store.register("analyst")
   store.register("developer")
 
-  const hooks = await Mismcp({ client, directory } as never)
+  const hooks = await Mismcp({ client, directory } as never, opts.options)
   await sleep(50)
+
+  const agents = store.agents().map((a) => a.agent_id)
 
   // poll ticks every 3s; hook.dispose stops it
   await hooks.dispose?.()
@@ -75,15 +87,17 @@ const runPlugin = async (client: MockClient) => {
   else process.env.AGENT_ID = prevId
   if (prevBus === undefined) delete process.env.BUS_PATH
   else process.env.BUS_PATH = prevBus
+  if (prevTemplate === undefined) delete process.env.MISMCP_NAME_TEMPLATE
+  else process.env.MISMCP_NAME_TEMPLATE = prevTemplate
   rmSync(busPath, { force: true })
 
-  return hooks
+  return { hooks, agents }
 }
 
 describe("system prompt roster", () => {
   it("injects a single roster line for an owned session", async () => {
     const { client } = makeClient("idle")
-    const hooks = await runPlugin(client)
+    const { hooks } = await runPlugin(client)
 
     const output = { system: [] as string[] }
     await hooks["experimental.chat.system.transform"]?.({ sessionID: "s1", model: {} as never }, output)
@@ -96,7 +110,7 @@ describe("system prompt roster", () => {
 
   it("does not duplicate the roster when the hook fires twice", async () => {
     const { client } = makeClient("idle")
-    const hooks = await runPlugin(client)
+    const { hooks } = await runPlugin(client)
 
     const output = { system: [] as string[] }
     const hook = hooks["experimental.chat.system.transform"]!
@@ -106,17 +120,13 @@ describe("system prompt roster", () => {
     assert.equal(output.system.length, 1, "roster must stay a single entry")
   })
 
-  it("skips requests without a session id or for a foreign session", async () => {
+  it("skips requests without a session id", async () => {
     const { client } = makeClient("idle")
-    const hooks = await runPlugin(client)
+    const { hooks } = await runPlugin(client)
 
     const noSession = { system: [] as string[] }
     await hooks["experimental.chat.system.transform"]?.({ model: {} as never }, noSession)
     assert.equal(noSession.system.length, 0)
-
-    const foreign = { system: [] as string[] }
-    await hooks["experimental.chat.system.transform"]?.({ sessionID: "other", model: {} as never }, foreign)
-    assert.equal(foreign.system.length, 0)
   })
 })
 
@@ -137,5 +147,91 @@ describe("roster notice", () => {
     await runPlugin(client)
 
     assert.equal(promptAsyncCalls.length, 0, "must not inject during an active loop")
+  })
+})
+
+describe("session ownership", () => {
+  it("never delivers into another agent's session in the same directory", async () => {
+    const busPath = join(mkdtempSync(join(tmpdir(), "mismcp-bus-")), "bus.db")
+    const prevId = process.env.AGENT_ID
+    const prevBus = process.env.BUS_PATH
+    process.env.AGENT_ID = "tester"
+    process.env.BUS_PATH = busPath
+
+    const promptAsyncCalls: PromptCall[] = []
+    // The foreign session is newer, so naive "most recently updated" picks it.
+    const foreign = { ...makeSession("s_foreign"), time: { created: 1, updated: 100 } }
+    const own = { ...makeSession("s_own"), time: { created: 1, updated: 1 } }
+    const client = {
+      session: {
+        list: async () => ({ data: [foreign, own] }),
+        status: async () => ({ data: { s_own: { type: "idle" as const } } }),
+        promptAsync: async (opts: PromptCall) => {
+          promptAsyncCalls.push(opts)
+          return {}
+        },
+      },
+      app: { log: async () => {} },
+    }
+
+    const store = openStore(busPath)
+    store.send({ from: "analyst", recipient: "tester", type: "question", content: "ping" })
+
+    const hooks = await Mismcp({ client, directory } as never)
+    await hooks.event?.({
+      event: { type: "session.created", properties: { info: { id: "s_own" } } },
+    } as never)
+    await sleep(50)
+    await hooks.dispose?.()
+
+    const delivered = promptAsyncCalls.filter((c) =>
+      c.body.parts.some((p) => p.text.includes("Question from analyst")),
+    )
+    assert.equal(delivered.length, 1, "exactly one delivery")
+    assert.equal(delivered[0].path.id, "s_own", "must target the owned session")
+    assert.ok(
+      promptAsyncCalls.every((c) => c.path.id !== "s_foreign"),
+      "must never touch the foreign session",
+    )
+
+    if (prevId === undefined) delete process.env.AGENT_ID
+    else process.env.AGENT_ID = prevId
+    if (prevBus === undefined) delete process.env.BUS_PATH
+    else process.env.BUS_PATH = prevBus
+    rmSync(busPath, { force: true })
+  })
+})
+
+describe("automatic agent naming", () => {
+  const ownId = (agents: string[]) => agents.find((a) => /^mismcp-plugin-test-[a-z0-9]{6}$/.test(a))
+
+  it("registers an auto-derived id when AGENT_ID is unset", async () => {
+    const { client } = makeClient("idle")
+    const { hooks, agents } = await runPlugin(client, { agentId: null })
+
+    const own = ownId(agents)
+    assert.ok(own, `expected an auto-derived id, got: ${agents.join(", ")}`)
+
+    const output = { system: [] as string[] }
+    await hooks["experimental.chat.system.transform"]?.({ sessionID: "s1", model: {} as never }, output)
+    assert.match(output.system[0], /analyst/)
+    assert.doesNotMatch(output.system[0], new RegExp(own!), "own id must not appear in the roster")
+  })
+
+  it("honors the MISMCP_NAME_TEMPLATE env var", async () => {
+    const { client } = makeClient("idle")
+    const { agents } = await runPlugin(client, { agentId: null, template: "custom" })
+
+    assert.ok(agents.some((a) => /^custom-[a-z0-9]{6}$/.test(a)), agents.join(", "))
+  })
+
+  it("honors the nameTemplate plugin option", async () => {
+    const { client } = makeClient("idle")
+    const { agents } = await runPlugin(client, {
+      agentId: null,
+      options: { nameTemplate: "cfg" },
+    })
+
+    assert.ok(agents.some((a) => /^cfg-[a-z0-9]{6}$/.test(a)), agents.join(", "))
   })
 })

@@ -5,6 +5,7 @@
 ## Адресаты
 
 Агенты идентифицируются по `AGENT_ID`. Ожидаемые по умолчанию: `tester`, `sut_expert`.
+Если `AGENT_ID` не задан, плагин назначает имя автоматически (имя рабочей директории + base36-суффикс); такое имя эфемерно, стабильное задавай через `AGENT_ID`.
 Актуальный список живых адресатов инжектится в контекст плагином (`Available agents to ask via mismcp_bus_send: ...`).
 
 ## Как спросить другого агента
@@ -34,6 +35,7 @@ Inter-agent messaging for opencode through the `mismcp` MCP server. Agents can a
 ## Recipients
 
 Agents are identified by `AGENT_ID`. Expected defaults: `tester`, `sut_expert`.
+If `AGENT_ID` is unset, the plugin assigns a name automatically (working-directory name + base36 suffix); that name is ephemeral, so set `AGENT_ID` for a stable one.
 The live list of online recipients is injected into your context by the plugin (`Available agents to ask via mismcp_bus_send: ...`).
 
 ## Asking another agent

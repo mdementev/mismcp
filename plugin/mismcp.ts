@@ -3,6 +3,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { openStore } from "../src/store.ts"
 import type { Message } from "../src/store.ts"
+import { deriveAgentId } from "../src/agent-id.ts"
 
 const ROSTER_PREFIX = "Available agents to ask via mismcp_bus_send"
 
@@ -17,10 +18,16 @@ const unwrap = <T>(res: DataResult<T> | T): T => {
   return res as T
 }
 
-export const Mismcp: Plugin = async ({ client, directory }) => {
-  const agentId = (process.env.AGENT_ID ?? "").trim()
+export const Mismcp: Plugin = async ({ client, directory, worktree, project }, options) => {
   const busPath = (process.env.BUS_PATH ?? "").trim() || join(homedir(), ".mismcp", "bus.db")
   const store = openStore(busPath)
+
+  const { id: agentId, source: agentIdSource } = deriveAgentId({
+    env: process.env,
+    options,
+    ctx: { directory, worktree, projectId: project?.id ?? "" },
+    isTaken: (id) => store.agents().some((a) => a.agent_id === id),
+  })
 
   const busSendTool = tool({
     description:
@@ -47,7 +54,6 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
         .describe('"question" = ask another agent; "answer" = reply to a received question'),
     },
     async execute({ recipient, content, type }) {
-      if (!agentId) return "AGENT_ID is not set — cannot send messages"
       if (recipient === agentId)
         return `refusing to send a message to yourself ("${agentId}") — pick another agent from the roster`
       const msg = store.send({ from: agentId, recipient, type, content })
@@ -55,15 +61,13 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
     },
   })
 
-  if (!agentId) {
-    await client.app.log({
-      body: { service: "mismcp", level: "warn", message: "AGENT_ID is not set — agent bus disabled (tool still registered)" },
-    })
-    return { tool: { mismcp_bus_send: busSendTool } }
-  }
-
   await client.app.log({
-    body: { service: "mismcp", level: "info", message: `agent bus online as "${agentId}"`, extra: { busPath } },
+    body: {
+      service: "mismcp",
+      level: "info",
+      message: `agent bus online as "${agentId}"`,
+      extra: { busPath, source: agentIdSource },
+    },
   })
 
   store.register(agentId)
@@ -103,16 +107,14 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
     injectedSessions.add(session.id)
   }
 
-  const refreshOwnedSessions = async () => {
+  // A session belongs to this instance only if it was created here (the
+  // `session.created` event) or is running here (SessionStatus is per-process).
+  // opencode stores sessions in a shared, directory-keyed DB, so other agents'
+  // sessions share the same `directory` and must never receive our messages.
+  const findOwnedSession = async (freeOnly: boolean) => {
     const sessions = unwrap(await client.session.list()).filter(
       (s) => s.directory === directory && !s.parentID,
     )
-    for (const s of sessions) ownedSessions.add(s.id)
-    return sessions
-  }
-
-  const findOwnedSession = async (freeOnly: boolean) => {
-    const sessions = await refreshOwnedSessions()
     if (sessions.length === 0) return null
 
     const statuses = unwrap(await client.session.status({ query: { directory } }))
@@ -124,14 +126,13 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
   }
 
   const pushMessage = async (msg: Message): Promise<void> => {
-    store.ack(msg.id)
     const session = await findOwnedSession(false)
     if (!session) {
       await client.app.log({
         body: {
           service: "mismcp",
           level: "warn",
-          message: `no owned session in this instance; message from ${msg.from} dropped`,
+          message: `no owned session in this instance; will retry message from ${msg.from}`,
         },
       })
       return
@@ -149,6 +150,7 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
       path: { id: session.id },
       body: { parts: [{ type: "text", text }] },
     })
+    store.ack(msg.id)
   }
 
   const poll = async () => {
@@ -178,7 +180,9 @@ export const Mismcp: Plugin = async ({ client, directory }) => {
   return {
     tool: { mismcp_bus_send: busSendTool },
     "experimental.chat.system.transform": async (input, output) => {
-      if (!input.sessionID || !ownedSessions.has(input.sessionID)) return
+      if (!input.sessionID) return
+      // This hook only runs for sessions handled by this instance.
+      ownedSessions.add(input.sessionID)
       const line = rosterLine()
       const idx = output.system.findIndex((s) => s.includes(ROSTER_PREFIX))
       if (idx >= 0) output.system[idx] = line

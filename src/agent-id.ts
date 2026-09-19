@@ -10,11 +10,17 @@ export interface AgentIdContext {
 export interface DeriveAgentIdInput {
   env: Record<string, string | undefined>
   options?: Record<string, unknown>
+  fileTemplate?: string
   ctx: AgentIdContext
   isTaken?: (id: string) => boolean
 }
 
-export type AgentIdSource = "agent_id" | "env_template" | "config_template" | "default"
+export type AgentIdSource =
+  | "agent_id"
+  | "env_template"
+  | "file_config"
+  | "config_template"
+  | "default"
 
 export interface DerivedAgentId {
   id: string
@@ -69,14 +75,21 @@ const prefixFromTemplate = (template: string, ctx: AgentIdContext): string => {
   return capped || "agent"
 }
 
-export const deriveAgentId = ({ env, options, ctx, isTaken }: DeriveAgentIdInput): DerivedAgentId => {
+export const deriveAgentId = ({ env, options, fileTemplate, ctx, isTaken }: DeriveAgentIdInput): DerivedAgentId => {
   const explicit = (env.AGENT_ID ?? "").trim()
   if (explicit) return { id: explicit, source: "agent_id" }
 
   const envTemplate = (env.MISMCP_NAME_TEMPLATE ?? "").trim()
+  const fromFile = (fileTemplate ?? "").trim()
   const configTemplate = typeof options?.nameTemplate === "string" ? options.nameTemplate.trim() : ""
-  const template = envTemplate || configTemplate || DEFAULT_TEMPLATE
-  const source: AgentIdSource = envTemplate ? "env_template" : configTemplate ? "config_template" : "default"
+  const template = envTemplate || fromFile || configTemplate || DEFAULT_TEMPLATE
+  const source: AgentIdSource = envTemplate
+    ? "env_template"
+    : fromFile
+      ? "file_config"
+      : configTemplate
+        ? "config_template"
+        : "default"
 
   const prefix = prefixFromTemplate(template, ctx)
   for (let i = 0; i < COLLISION_RETRIES; i++) {

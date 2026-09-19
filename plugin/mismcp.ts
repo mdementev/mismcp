@@ -1,9 +1,8 @@
 import { tool, type Plugin } from "@opencode-ai/plugin"
-import { homedir } from "node:os"
-import { join } from "node:path"
 import { openStore } from "../src/store.ts"
 import type { Message } from "../src/store.ts"
 import { deriveAgentId } from "../src/agent-id.ts"
+import { ensureConfigExists, loadConfig } from "../src/config.ts"
 
 const ROSTER_PREFIX = "Available agents to ask via mismcp_bus_send"
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000
@@ -20,12 +19,15 @@ const unwrap = <T>(res: DataResult<T> | T): T => {
 }
 
 export const Mismcp: Plugin = async ({ client, directory, worktree, project }, options) => {
-  const busPath = (process.env.BUS_PATH ?? "").trim() || join(homedir(), ".mismcp", "bus.db")
+  const configPath = ensureConfigExists()
+  const config = loadConfig(directory)
+  const busPath = (process.env.BUS_PATH ?? "").trim() || config.busPath
   const store = openStore(busPath)
 
   const { id: agentId, source: agentIdSource } = deriveAgentId({
     env: process.env,
     options,
+    fileTemplate: config.nameTemplate,
     ctx: { directory, worktree, projectId: project?.id ?? "" },
     isTaken: (id) => store.agents().some((a) => a.agent_id === id),
   })
@@ -67,7 +69,7 @@ export const Mismcp: Plugin = async ({ client, directory, worktree, project }, o
       service: "mismcp",
       level: "info",
       message: `agent bus online as "${agentId}"`,
-      extra: { busPath, source: agentIdSource },
+      extra: { busPath, source: agentIdSource, config: configPath },
     },
   })
 

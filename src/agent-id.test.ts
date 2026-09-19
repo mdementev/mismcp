@@ -101,6 +101,41 @@ describe("deriveAgentId", () => {
     assert.match(blankEnv.id, /^opttpl-[a-z0-9]{6}$/)
   })
 
+  it("prefers the file config over the plugin options", () => {
+    const res = deriveAgentId({
+      env: env(),
+      options: { nameTemplate: "opttpl" },
+      fileTemplate: "filetpl",
+      ctx: ctx(),
+      isTaken: () => false,
+    })
+    assert.match(res.id, /^filetpl-[a-z0-9]{6}$/)
+    assert.equal(res.source, "file_config")
+  })
+
+  it("lets the env template win over the file config", () => {
+    const res = deriveAgentId({
+      env: env({ MISMCP_NAME_TEMPLATE: "envtpl" }),
+      fileTemplate: "filetpl",
+      ctx: ctx(),
+      isTaken: () => false,
+    })
+    assert.match(res.id, /^envtpl-[a-z0-9]{6}$/)
+    assert.equal(res.source, "env_template")
+  })
+
+  it("ignores a blank file template", () => {
+    const res = deriveAgentId({
+      env: env(),
+      options: { nameTemplate: "opttpl" },
+      fileTemplate: "   ",
+      ctx: ctx(),
+      isTaken: () => false,
+    })
+    assert.match(res.id, /^opttpl-[a-z0-9]{6}$/)
+    assert.equal(res.source, "config_template")
+  })
+
   it("silently drops unknown tokens and falls back to 'agent' when empty", () => {
     const dropped = deriveAgentId({
       env: env({ MISMCP_NAME_TEMPLATE: "x{unknown}y" }),

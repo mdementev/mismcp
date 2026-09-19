@@ -37,14 +37,37 @@ Replies come back the same way (`type: "answer"`). Everything runs in-process in
 
 `BUS_PATH` is optional and defaults to `~/.mismcp/bus.db`.
 
+## Config file
+
+On first run the plugin creates `~/.config/opencode/mismcp.jsonc` if it does not
+exist yet (JSONC — comments allowed). Edit it and restart opencode to apply:
+
+```jsonc
+{
+  // Name for this agent. Tokens: {dir} {worktree} {projectId} {host} {user} {pid}.
+  // A 6-char base36 suffix is always appended. For a stable, suffix-free name,
+  // set the AGENT_ID env var instead — it wins over this file.
+  "nameTemplate": "{dir}-agent",
+
+  // Shared SQLite queue. Default: ~/.mismcp/bus.db. Override with the BUS_PATH env var.
+  "busPath": "~/.mismcp/bus.db"
+}
+```
+
+A project can override it with `<project>/.opencode/mismcp.jsonc` (or `.json`);
+the project file wins. This is read by the plugin itself, so it works no matter
+how the plugin was loaded — via the `plugin` config array or auto-discovered from
+the `plugin/`/`plugins/` directory. Set `MISMCP_CONFIG_DIR` to relocate the file.
+
 ## Agent names
 
 Every instance always gets a name. The first source that is set wins:
 
 1. `AGENT_ID` — used verbatim (stable, no suffix).
 2. `MISMCP_NAME_TEMPLATE` env var.
-3. `nameTemplate` plugin option.
-4. default `{dir}`.
+3. `nameTemplate` in the config file (`~/.config/opencode/mismcp.jsonc`, or the project override).
+4. `nameTemplate` plugin option.
+5. default `{dir}`.
 
 For template-derived names, the rendered template is normalized to `[a-z0-9_-]`
 and a 6-character base36 suffix is always appended, so several agents can share
@@ -57,8 +80,11 @@ Template tokens: `{dir}`, `{worktree}`, `{projectId}`, `{host}`, `{user}`,
 back to `agent`. Example: `MISMCP_NAME_TEMPLATE='{dir}-agent'` gives names like
 `opencode-plugin-agent-3rkog4`.
 
+The `nameTemplate` plugin option is only a fallback — the config file above is
+preferred, so you rarely need it:
+
 ```jsonc
-// opencode.json
+// opencode.json — optional, only if you don't want a config file
 {
   "$schema": "https://opencode.ai/config.json",
   "plugin": [["mismcp", { "nameTemplate": "agent-{dir}" }]]

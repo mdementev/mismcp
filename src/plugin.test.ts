@@ -1,6 +1,6 @@
 import { describe, it } from "node:test"
 import assert from "node:assert/strict"
-import { mkdtempSync, rmSync } from "node:fs"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Mismcp } from "../plugin/mismcp.ts"
@@ -57,16 +57,23 @@ type RunOptions = {
   agentId?: string | null
   template?: string
   options?: Record<string, unknown>
+  fileConfig?: string
 }
 
 const runPlugin = async (client: MockClient, opts: RunOptions = {}) => {
   const busPath = join(mkdtempSync(join(tmpdir(), "mismcp-bus-")), "bus.db")
+  const configDir = mkdtempSync(join(tmpdir(), "mismcp-cfg-"))
+  if (opts.fileConfig !== undefined) {
+    writeFileSync(join(configDir, "mismcp.jsonc"), opts.fileConfig)
+  }
   const prevId = process.env.AGENT_ID
   const prevBus = process.env.BUS_PATH
   const prevTemplate = process.env.MISMCP_NAME_TEMPLATE
+  const prevConfigDir = process.env.MISMCP_CONFIG_DIR
   if (opts.agentId === null) delete process.env.AGENT_ID
   else process.env.AGENT_ID = opts.agentId ?? "tester"
   process.env.BUS_PATH = busPath
+  process.env.MISMCP_CONFIG_DIR = configDir
   if (opts.template === undefined) delete process.env.MISMCP_NAME_TEMPLATE
   else process.env.MISMCP_NAME_TEMPLATE = opts.template
 
@@ -89,7 +96,10 @@ const runPlugin = async (client: MockClient, opts: RunOptions = {}) => {
   else process.env.BUS_PATH = prevBus
   if (prevTemplate === undefined) delete process.env.MISMCP_NAME_TEMPLATE
   else process.env.MISMCP_NAME_TEMPLATE = prevTemplate
+  if (prevConfigDir === undefined) delete process.env.MISMCP_CONFIG_DIR
+  else process.env.MISMCP_CONFIG_DIR = prevConfigDir
   rmSync(busPath, { force: true })
+  rmSync(configDir, { recursive: true, force: true })
 
   return { hooks, agents }
 }
@@ -203,9 +213,10 @@ describe("session ownership", () => {
 })
 
 describe("automatic agent naming", () => {
-  const ownId = (agents: string[]) => agents.find((a) => /^mismcp-plugin-test-[a-z0-9]{6}$/.test(a))
+  const ownId = (agents: string[]) =>
+    agents.find((a) => /^mismcp-plugin-test-agent-[a-z0-9]{6}$/.test(a))
 
-  it("registers an auto-derived id when AGENT_ID is unset", async () => {
+  it("registers an auto-derived id from the default config template", async () => {
     const { client } = makeClient("idle")
     const { hooks, agents } = await runPlugin(client, { agentId: null })
 
@@ -225,13 +236,25 @@ describe("automatic agent naming", () => {
     assert.ok(agents.some((a) => /^custom-[a-z0-9]{6}$/.test(a)), agents.join(", "))
   })
 
-  it("honors the nameTemplate plugin option", async () => {
+  it("honors the nameTemplate from the config file", async () => {
     const { client } = makeClient("idle")
     const { agents } = await runPlugin(client, {
       agentId: null,
-      options: { nameTemplate: "cfg" },
+      fileConfig: `{ "nameTemplate": "filecfg" }`,
     })
 
-    assert.ok(agents.some((a) => /^cfg-[a-z0-9]{6}$/.test(a)), agents.join(", "))
+    assert.ok(agents.some((a) => /^filecfg-[a-z0-9]{6}$/.test(a)), agents.join(", "))
+  })
+
+  it("prefers the config file over the plugin option", async () => {
+    const { client } = makeClient("idle")
+    const { agents } = await runPlugin(client, {
+      agentId: null,
+      options: { nameTemplate: "optcfg" },
+      fileConfig: `{ "nameTemplate": "filecfg" }`,
+    })
+
+    assert.ok(agents.some((a) => /^filecfg-[a-z0-9]{6}$/.test(a)), agents.join(", "))
+    assert.ok(!agents.some((a) => /^optcfg-/.test(a)), "plugin option must not win")
   })
 })

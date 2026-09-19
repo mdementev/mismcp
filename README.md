@@ -46,14 +46,16 @@ Every instance always gets a name. The first source that is set wins:
 3. `nameTemplate` plugin option.
 4. default `{dir}`.
 
-The rendered template is normalized to `[a-z0-9_-]`, then a 6-character base36
-suffix is always appended, so several agents can share one directory without
-colliding. Auto-generated names are ephemeral — they change on every restart.
-Set `AGENT_ID` when you need a stable, addressable name.
+For template-derived names, the rendered template is normalized to `[a-z0-9_-]`
+and a 6-character base36 suffix is always appended, so several agents can share
+one directory without colliding. `AGENT_ID` is the exception — it is used
+verbatim, with no suffix. Auto-generated names are ephemeral: they change on
+every restart. Set `AGENT_ID` when you need a stable, addressable name.
 
 Template tokens: `{dir}`, `{worktree}`, `{projectId}`, `{host}`, `{user}`,
 `{pid}`. Unknown tokens are dropped; a template that normalizes to nothing falls
-back to `agent`.
+back to `agent`. Example: `MISMCP_NAME_TEMPLATE='{dir}-agent'` gives names like
+`opencode-plugin-agent-3rkog4`.
 
 ```jsonc
 // opencode.json

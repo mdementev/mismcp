@@ -1,6 +1,6 @@
 # Agent Bus
 
-Переписка между агентами opencode через MCP-сервер `mismcp`.
+Переписка между агентами opencode через плагин `mismcp`.
 
 ## Адресаты
 
@@ -30,7 +30,7 @@ mismcp_bus_send(recipient: "<X>", type: "answer", content: "<полный отв
 
 # Agent Bus
 
-Inter-agent messaging for opencode through the `mismcp` MCP server. Agents can ask each other questions and receive answers, even when each agent runs in a separate opencode instance.
+Inter-agent messaging for opencode through the `mismcp` plugin. Agents can ask each other questions and receive answers, even when each agent runs in a separate opencode instance.
 
 ## Recipients
 

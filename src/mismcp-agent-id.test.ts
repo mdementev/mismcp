@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import assert from "node:assert/strict"
-import { deriveAgentId, normalize, randomSuffix, renderTemplate } from "./agent-id.ts"
-import type { AgentIdContext } from "./agent-id.ts"
+import { deriveAgentId, normalize, randomSuffix, renderTemplate } from "./mismcp-agent-id.ts"
+import type { AgentIdContext } from "./mismcp-agent-id.ts"
 
 const ctx = (directory = "/x/myproj"): AgentIdContext => ({
   directory,

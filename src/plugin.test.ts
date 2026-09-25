@@ -4,7 +4,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { Mismcp } from "../plugin/mismcp.ts"
-import { openStore } from "./store.ts"
+import { openStore } from "./mismcp-store.ts"
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 

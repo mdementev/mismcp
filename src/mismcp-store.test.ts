@@ -1,7 +1,7 @@
 import { describe, it } from "node:test"
 import assert from "node:assert/strict"
 import { rmSync } from "node:fs"
-import { openStore } from "./store.ts"
+import { openStore } from "./mismcp-store.ts"
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 

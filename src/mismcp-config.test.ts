@@ -11,7 +11,7 @@ import {
   expandPath,
   loadConfig,
   stripJsoncComments,
-} from "./config.ts"
+} from "./mismcp-config.ts"
 
 const tmp = () => mkdtempSync(join(tmpdir(), "mismcp-config-"))
 

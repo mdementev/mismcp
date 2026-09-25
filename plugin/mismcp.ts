@@ -1,8 +1,8 @@
 import { tool, type Plugin } from "@opencode-ai/plugin"
-import { openStore } from "../src/store.ts"
-import type { Message } from "../src/store.ts"
-import { deriveAgentId } from "../src/agent-id.ts"
-import { ensureConfigExists, loadConfig } from "../src/config.ts"
+import { openStore } from "../src/mismcp-store.ts"
+import type { Message } from "../src/mismcp-store.ts"
+import { deriveAgentId } from "../src/mismcp-agent-id.ts"
+import { ensureConfigExists, loadConfig } from "../src/mismcp-config.ts"
 
 const ROSTER_PREFIX = "Available agents to ask via mismcp_bus_send"
 const PRUNE_INTERVAL_MS = 60 * 60 * 1000

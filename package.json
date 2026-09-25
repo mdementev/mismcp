@@ -1,6 +1,6 @@
 {
   "name": "mismcp",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "opencode multi-agent bus: agents ask each other questions over a shared SQLite queue",
   "type": "module",
   "license": "MIT",
@@ -16,9 +16,9 @@
   ],
   "files": [
     "plugin/mismcp.ts",
-    "src/agent-id.ts",
-    "src/config.ts",
-    "src/store.ts"
+    "src/mismcp-agent-id.ts",
+    "src/mismcp-config.ts",
+    "src/mismcp-store.ts"
   ],
   "main": "plugin/mismcp.ts",
   "exports": {
